@@ -63,4 +63,5 @@
     .br-card-foot { padding: 10px 12px; text-align: center; border-top: 1.5px solid var(--border); }
     .br-card-hl.ph { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
     .br-sep { height: 12px; }
+    .br-card:hover { background: rgba(0,0,0,0.03); }
   
