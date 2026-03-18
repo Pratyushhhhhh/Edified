@@ -1,0 +1,66 @@
+
+   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+         
+    :root {
+      --bg: #c8c0b0;
+      --surface: #d2cab8;
+      --card: #cdc5b3;
+      --text: #111008;
+      --muted: #7a6e5e;
+      --red: #b8291e;
+      --border: #a89e8c;
+    }
+
+    body { background: var(--bg); font-family: 'Barlow', sans-serif; color: var(--text); }
+
+    
+    /*logo + site title + tagline*/
+    .site-header { background: var(--surface); text-align: center; padding: 18px 0 14px; border-bottom: 2px solid var(--border); }
+    .site-header h1 { font-family: 'Playfair Display', serif; font-size: clamp(52px, 8vw, 88px); letter-spacing: 0.1em; line-height: 1; }
+    .site-header p { font-size: 14px; color: var(--muted); margin-top: 4px; letter-spacing: 0.05em; }
+
+    /* navigation pills/tags*/
+    .nav-bar { background: var(--surface); display: flex; align-items: center; gap: 10px; padding: 10px 22px; border-bottom: 2px solid var(--border); }
+    .nav-pills { display: flex; align-items: center; flex: 1; overflow-x: auto;gap:18px; }
+    .nav-pills::-webkit-scrollbar { display: none; }
+    .trend-icon { color: #2a9e58; width: 24px; height: 24px; flex-shrink: 0; }
+    .pill { padding: 15px 55px; border-radius: 24px; border: 1.5px solid var(--border); background: var(--bg); font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; transition: background 0.15s, color 0.15s; }
+    .pill:hover, .pill.active { background: var(--text); color: #f5f0e8; border-color: var(--text); }
+    .nav-search { display: flex; align-items: center; gap: 6px; background: #fff; border-radius: 20px; padding: 6px 12px; width: 200px; flex-shrink: 0; }
+    .nav-search input { border:none; background: transparent; font-size: 13px; width: 100%; color: var(--text); }
+   
+    /* page sections */
+    .page-body { display: flex; grid-template-columns: 1fr 360px; }
+    @media (max-width: 900px) { .page-body { grid-template-columns: 1fr; } }
+
+    /* LHS */
+    .left-panel { padding: 16px; border-right: 2px solid var(--border); flex:1}
+    .top-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* NEWS cards main */
+    .news-card { background: var(--card); border-radius: 6px; overflow: hidden; cursor: pointer; }
+    .news-card:hover { transform: translateY(-4px); box-shadow: 0 10px 26px rgba(0,0,0,0.16); }
+    .card-img { width: 100%; height: 200px; object-fit: cover; display: block; }
+    .card-body { padding: 12px 13px; }
+    .card-title { font-size: 14px; font-weight: 700; line-height: 1.4; text-align: center; margin-bottom: 7px; }
+    .card-meta, .article-meta { font-size: 11px; color: var(--muted); }
+    .red { color: var(--red); font-weight: 700; }
+
+    /* news list rows */
+    .article-list { margin-top: 12px; border-top: 2px solid var(--border); }
+    .article-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 4px; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .article-row:last-child { border-bottom: none; }
+    .article-row:hover { background: rgba(0,0,0,0.03); }
+    .article-title { font-size: 14px; font-weight: 600; line-height: 1.4; margin-bottom: 5px; }
+    .article-thumb { width: 150px; height: 100px; flex-shrink: 0; border-radius: 5px; background: var(--bg); }
+
+    /* RHS articles */
+    .right-panel { padding: 16px; }
+    .br-heading { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--red); margin-bottom: 10px; }
+    .br-card { background: var(--card); border-radius: 6px; overflow: hidden; margin-bottom: 4px; }
+    .br-img { height: 140px; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+    .br-img img { width: 100%; height: 100%; object-fit: cover; }
+    .br-card-foot { padding: 10px 12px; text-align: center; border-top: 1.5px solid var(--border); }
+    .br-card-hl.ph { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+    .br-sep { height: 12px; }
+  
