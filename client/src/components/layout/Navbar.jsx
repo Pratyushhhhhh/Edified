@@ -31,11 +31,11 @@ export default function Navbar({ activeCategory, onCategoryChange }) {
             color: "#31332C", cursor: "pointer",
           }}
         >
-          NewsLens
+          THE EDIFIED
         </span>
 
         <span style={{ fontSize: "11px", color: "#9a9b95", letterSpacing: ".06em" }}>
-          EDITION · BETA
+          EDITION · 2026
         </span>
       </div>
 

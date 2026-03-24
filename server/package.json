@@ -1,5 +1,5 @@
 {
-  "name": "newslens-server",
+  "name": "theedified-server",
   "version": "1.0.0",
   "description": "Backend for Edified",
   "main": "server.js",

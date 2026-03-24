@@ -16,7 +16,7 @@ app.use(express.json());
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.get("/", (req, res) => {
-  res.json({ message: "NewsLens API is running" });
+  res.json({ message: "The Edified API is running" });
 });
 
 // Cluster / home page feed
