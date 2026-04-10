@@ -68,7 +68,7 @@ const getContrastStory = async (req, res, next) => {
     // inconsistency), we fall back to the first article.
     const coverArticle =
       story.articles.find(
-        (a) => a.source.toLowerCase() === story.coverSource.toLowerCase()
+        (a) => (a.source_name || a.source || "").toLowerCase() === story.coverSource.toLowerCase()
       ) || story.articles[0] || null;
 
     // ── 3. Sort articles — cover article first, then by publishedAt desc ──

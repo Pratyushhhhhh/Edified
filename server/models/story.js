@@ -56,14 +56,11 @@ const storySchema = new mongoose.Schema(
 
     category: {
       type: String,
-      enum: [
-        "world", "politics", "business", "technology",
-        "science", "health", "sports", "entertainment",
-        "environment", "other",
-      ],
       default: "other",
       // Shown as the category pill (e.g. "INVESTIGATION", "BUSINESS")
       // on the contrast page meta bar.
+      // No enum — clusters data uses values like "General" that may not
+      // match a fixed whitelist.
     },
 
     tags: {
@@ -117,11 +114,13 @@ const storySchema = new mongoose.Schema(
     },
 
     latestPublishedAt: {
-      type: Date,
+      type: mongoose.Schema.Types.Mixed,
       default: Date.now,
       // Auto-updated in pre-save hook to match the most recent article.
       // Used to sort stories newest-first on the cluster/home page.
       // Not shown on the contrast page directly.
+      // Type is Mixed because clusters data stores RFC 2822 strings
+      // instead of Date objects.
     },
 
     isActive: {
@@ -174,4 +173,6 @@ storySchema.index({ latestPublishedAt: -1 });
 storySchema.index({ category: 1, latestPublishedAt: -1 });
 storySchema.index({ isActive: 1 });
 
-module.exports = mongoose.model("Story", storySchema);
+// Third argument forces Mongoose to use the "clusters" collection
+// instead of auto-pluralizing "Story" → "stories".
+module.exports = mongoose.model("Story", storySchema, "clusters");

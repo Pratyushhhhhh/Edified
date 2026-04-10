@@ -4,8 +4,8 @@ import Navbar from "../components/layout/Navbar";
 import ArticleItem from "../components/story/articleItem";
 
 export default function StoryDetail() {
-  const { id }    = useParams();   // grabs the :id from the URL
-  const navigate  = useNavigate();
+  const { id } = useParams();   // grabs the :id from the URL
+  const navigate = useNavigate();
   const { story, loading, error } = useContrast(id);
 
   // ── Loading ──────────────────────────────────────────────────────────────
@@ -35,6 +35,17 @@ export default function StoryDetail() {
   );
 
   if (!story) return null;
+
+  // When summary[] is empty (clusters data), show first 3 article titles instead
+  const summaryPoints = story.summary?.length > 0
+    ? story.summary
+    : story.articles?.slice(0, 3).map(a => a.title) || [];
+
+  // Filter out Google News generic thumbnails
+  const isRealImage = (url) => url && !url.includes("lh3.googleusercontent.com");
+  const heroImage = isRealImage(story.imageUrl)
+    ? story.imageUrl
+    : story.articles?.find(a => isRealImage(a.imageUrl))?.imageUrl || null;
 
   return (
     <div style={{ minHeight: "100vh", background: "#F8F6F1" }}>
@@ -88,22 +99,22 @@ export default function StoryDetail() {
         {/* ── Image + Summary ── */}
         <div style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
+          gridTemplateColumns: heroImage ? "1fr 1fr" : "1fr",
           gap: "36px", marginBottom: "48px",
           animation: "fadeUp .5s ease .1s both",
         }}>
           {/* Hero image */}
-          {story.imageUrl && (
+          {heroImage && (
             <img
-              src={story.imageUrl}
+              src={heroImage}
               alt={story.headline}
               style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", filter: "grayscale(15%)" }}
             />
           )}
 
-          {/* 3 summary bullet points */}
+          {/* 3 summary bullet points (or article titles as fallback) */}
           <div>
-            {story.summary?.map((point, i) => (
+            {summaryPoints.map((point, i) => (
               <div key={i} style={{
                 display: "flex", gap: "14px",
                 padding: "16px 0",

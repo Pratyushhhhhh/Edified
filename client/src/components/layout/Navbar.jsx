@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
-const CATEGORIES = ["All", "World", "Politics", "Business", "Technology", "Science", "Health"];
+const CATEGORIES = ["All", "General", "World", "Politics", "Business", "Technology", "Science", "Health"];
 
 export default function Navbar({ activeCategory, onCategoryChange }) {
   const navigate = useNavigate();

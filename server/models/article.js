@@ -42,9 +42,15 @@ const articleSchema = new mongoose.Schema({
   },
   source: {
     type: String,
-    required: true,
     trim: true,
     // e.g. "BBC News", "Reuters", "The Hindu"
+    // Used in test/stories data
+  },
+  source_name: {
+    type: String,
+    trim: true,
+    // e.g. "The Hindu" — used in news_aggregator/clusters data
+    // The frontend should check source_name || source
   },
   publishedAt: {
     type: Date,
@@ -54,6 +60,11 @@ const articleSchema = new mongoose.Schema({
     type: String,
     default: "",
     // Shown as the short description under each article row on contrast page
+  },
+  summary_meta: {
+    type: String,
+    default: "",
+    // Used in clusters data as an alternative to snippet
   },
 
   // ── New fields added for the contrast page ─────────────────────────────────
@@ -68,6 +79,12 @@ const articleSchema = new mongoose.Schema({
     default: "",
     // Per-article thumbnail — reserved for future per-article image display
     // Currently the Story-level imageUrl is used as the contrast page hero image
+  },
+  top_image: {
+    type: String,
+    default: "",
+    // Used in clusters data — scraped from Google News RSS
+    // Often holds the same Google News generic thumbnail
   },
   fullContent: {
     type: String,
@@ -91,10 +108,21 @@ const articleSchema = new mongoose.Schema({
   },
   biasLabel: {
     type: String,
-    enum: ["left", "center-left", "center", "center-right", "right", null],
+    enum: ["left", "center-left", "center", "center-right", "right", "unrated", null],
     default: null,
     // Human-readable label shown as a pill next to the source name
     // e.g. "center-left" renders as a teal pill on the contrast page
+    // "unrated" is used in clusters data when bias has not been assessed
+  },
+  category: {
+    type: String,
+    default: "",
+    // Per-article category — present in clusters data
+  },
+  tags: {
+    type: [String],
+    default: [],
+    // Per-article tags — present in clusters data
   },
 });
 

@@ -5,7 +5,7 @@ const getStories = async (req, res, next) => {
     const { page = 1, limit = 10, category } = req.query;
 
     const filter = { isActive: true };
-    if (category && category !== "all") filter.category = category;
+    if (category && category !== "all") filter.category = new RegExp(`^${category}$`, "i");
 
     const stories = await Story.find(filter)
       .sort({ latestPublishedAt: -1 })

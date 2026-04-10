@@ -1,8 +1,5 @@
 import { useState, useEffect } from "react";
-import { fetchContrast } from "../api/stories";
 
-// Custom hook for the contrast page.
-// StoryDetail.jsx calls useContrast(id) and gets back the full story object.
 export default function useContrast(storyId) {
   const [story,   setStory]   = useState(null);
   const [loading, setLoading] = useState(true);
@@ -10,14 +7,19 @@ export default function useContrast(storyId) {
 
   useEffect(() => {
     if (!storyId) return;
-
     setLoading(true);
-    setError(null);
 
-    fetchContrast(storyId)
-      .then((res) => setStory(res.data.data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+    fetch(`http://localhost:5000/api/contrast/${storyId}`)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success) setStory(json.data);
+        else setError(json.message);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setLoading(false);
+      });
   }, [storyId]);
 
   return { story, loading, error };
