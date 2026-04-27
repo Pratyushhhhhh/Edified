@@ -1,0 +1,19 @@
+# Core API & Database
+requests
+pymongo
+python-dotenv
+langdetect
+
+# Scraping
+feedparser
+beautifulsoup4
+
+# Machine Learning & NLP
+sentence-transformers
+scikit-learn
+transformers
+torch
+numpy
+
+# Optional Utilities
+lxml
