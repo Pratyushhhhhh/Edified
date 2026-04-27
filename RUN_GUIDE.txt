@@ -1,0 +1,50 @@
+=========================================
+EDIFIED - PIPELINE RUN GUIDE (V2)
+=========================================
+
+1. INITIAL SETUP
+----------------
+Before running, install all dependencies:
+  pip install -r requirements.txt
+
+2. CONFIGURATION (.env)
+-----------------------
+Create a file named '.env' inside the 'scraperv2/' directory.
+Use 'config.example.py' as a template. You MUST provide:
+  - MONGO_URI
+  - GROQ_API_KEY
+  - GEMINI_API_KEY
+
+3. RUNNING THE ORCHESTRATOR
+---------------------------
+The orchestrator manages the entire news pipeline (Collection -> Clustering -> Summarization).
+
+Run everything once:
+  python scraperv2/orchestrator.py
+
+Run specific stages only:
+  python scraperv2/orchestrator.py --stage collect
+  python scraperv2/orchestrator.py --stage cluster
+  python scraperv2/orchestrator.py --stage summarize
+  python scraperv2/orchestrator.py --stage bias
+
+Continuous Loop (runs every 2 hours):
+  python scraperv2/orchestrator.py --loop
+
+4. INDIVIDUAL MODULES
+---------------------
+You can also run modules independently for debugging:
+
+Collector (Fetch RSS):
+  python scraperv2/collector.py
+
+Summarizer V3 (Groq/Gemini):
+  python scraperv2/summarizer_v3.py
+
+5. TROUBLESHOOTING
+------------------
+- Rate Limits: If you hit Groq 429 errors, the system will automatically 
+  try to use Gemini. If both fail, it will sleep and retry.
+- Checkpoints: The summarizer saves progress in 'summarizer_checkpoint.json'.
+  If the script crashes, it will pick up exactly where it left off.
+=========================================
