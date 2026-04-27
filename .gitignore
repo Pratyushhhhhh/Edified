@@ -10,6 +10,9 @@ ENV/
 
 #Old Code
 scraper/
+scraper/category.py
+scraper/collector.py
+scraper/cluster_rebuild.py
 
 # Sensitive Config
 scraperv2/config.py
