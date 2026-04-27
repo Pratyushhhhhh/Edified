@@ -1,96 +1,139 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
-const CATEGORIES = ["All", "General", "World", "Politics", "Business", "Technology", "Science", "Health"];
+const PRIMARY_LINKS = [
+  { label: "Home", to: "/" },
+  { label: "Location", to: "/location" },
+  { label: "Blindspots", to: "/blindspots" },
+];
 
-export default function Navbar({ activeCategory, onCategoryChange }) {
+const HOME_CATEGORIES = [
+  { label: "General", val: "general", icon: "newspaper" },
+  { label: "World", val: "world", icon: "public" },
+  { label: "Politics", val: "politics", icon: "gavel" },
+  { label: "Business", val: "business", icon: "payments" },
+  { label: "Culture", val: "culture", icon: "theater_comedy" },
+  { label: "Science", val: "science", icon: "science" },
+  { label: "Health", val: "health", icon: "health_and_safety" },
+  { label: "Technology", val: "technology", icon: "devices" },
+];
+
+const CITIES = [
+  "Delhi", "Mumbai", "Bangalore", "Kolkata", "Chennai", "Hyderabad",
+  "Pune", "Ahmedabad", "Jaipur", "Lucknow",
+];
+
+export default function Navbar({
+  activeCategory,
+  onCategoryChange,
+  activeCity,
+  onCityChange,
+}) {
+  const location = useLocation();
   const navigate = useNavigate();
 
+  const isHome = location.pathname === "/";
+  const isLocation = location.pathname === "/location";
+  const isBlindspots = location.pathname === "/blindspots";
+
+  const activePath = location.pathname;
+
   return (
-    <nav style={{
-      borderBottom: "1px solid #ddd9ce",
-      background: "#F8F6F1",
-      position: "sticky", top: 0, zIndex: 100,
-    }}>
-      {/* Top bar */}
-      <div style={{
-        display: "flex", alignItems: "center",
-        justifyContent: "space-between",
-        padding: "14px 48px",
-        borderBottom: "1px solid #ddd9ce",
-      }}>
-        <span style={{ fontSize: "11px", fontWeight: 500, letterSpacing: ".08em", textTransform: "uppercase", color: "#9a9b95" }}>
-          {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-        </span>
+    <header>
+      {/* ── Primary navigation bar ── */}
+      <nav className="top-nav">
+        <div className="top-nav-inner">
+          {/* Row 1: icons + masthead */}
+          <div className="top-nav-row1">
+            <div style={{
+              fontFamily: "'Public Sans', sans-serif",
+              fontSize: 18,
+              fontWeight: 600,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "var(--c-outline)",
+              whiteSpace: "nowrap",
+              userSelect: "none",
+            }}>
+              {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
+            </div>
 
-        <span
-          onClick={() => navigate("/")}
-          style={{
-            fontFamily: "'Newsreader', Georgia, serif",
-            fontSize: "22px", fontWeight: 700,
-            letterSpacing: ".12em", textTransform: "uppercase",
-            color: "#31332C", cursor: "pointer",
-          }}
-        >
-          THE EDIFIED
-        </span>
-
-        <span style={{ fontSize: "11px", color: "#9a9b95", letterSpacing: ".06em" }}>
-          EDITION · 2026
-        </span>
-      </div>
-
-      {/* Category tabs */}
-      <div style={{
-        display: "flex", justifyContent: "center",
-        gap: "36px", padding: "12px 48px",
-        overflowX: "auto",
-      }}>
-        {CATEGORIES.map((cat) => {
-          const val = cat.toLowerCase();
-          const isActive = activeCategory === val;
-          return (
-            <button
-              key={cat}
-              onClick={() => onCategoryChange?.(val)}
-              style={{
-                background: "none", border: "none", cursor: "pointer",
-                fontFamily: "'Public Sans', sans-serif",
-                fontSize: "11px", fontWeight: 600,
-                letterSpacing: ".12em", textTransform: "uppercase",
-                color: isActive ? "#b8281e" : "#5a5c54",
-                borderBottom: isActive ? "2px solid #b8281e" : "2px solid transparent",
-                paddingBottom: "2px",
-                transition: "color .15s, border-color .15s",
-                whiteSpace: "nowrap",
-              }}
+            <span
+              className="nav-masthead"
+              onClick={() => navigate("/")}
+              role="link"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && navigate("/")}
             >
-              {cat}
+              The Edified
+            </span>
+
+            <button className="nav-icon-btn" aria-label="Account">
+              <span className="material-symbols-outlined" style={{
+                fontSize: 28,
+              }}>account_circle</span>
             </button>
-          );
-        })}
-        <button
-          onClick={() => navigate("/blindspots")}
-          style={{
-            background: "none",
-            color: "#b8281e",
-            border: "1px solid #b8281e",
-            padding: "4px 12px",
-            borderRadius: "4px",
-            fontFamily: "'Public Sans', sans-serif",
-            fontSize: "10px",
-            fontWeight: 700,
-            letterSpacing: ".1em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-            marginLeft: "16px",
-            transition: "all .15s",
-          }}
-          onMouseEnter={e => { e.target.style.background = "#b8281e"; e.target.style.color = "#F8F6F1"; }}
-          onMouseLeave={e => { e.target.style.background = "none"; e.target.style.color = "#b8281e"; }}
-        >
-          Blindspots
-        </button>
-      </div>
-    </nav>
+          </div>
+
+          {/* Row 2: primary page links */}
+          <div className="primary-nav">
+            {PRIMARY_LINKS.map(({ label, to }) => (
+              <Link
+                key={to}
+                to={to}
+                className={`primary-nav-link${activePath === to ? " active" : ""}`}
+              >
+                {label}
+              </Link>
+            ))}
+            <a
+              href="#site-footer"
+              className="primary-nav-link"
+            >
+              About Us
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      {/* ── Secondary nav: category tabs (Home & Blindspots) ── */}
+      {(isHome || isBlindspots) && (
+        <div className="secondary-nav">
+          <div className="secondary-nav-inner">
+            <button
+              className={`secondary-nav-link${(!activeCategory || activeCategory === "all") ? " active" : ""}`}
+              onClick={() => onCategoryChange?.("all")}
+            >
+              All
+            </button>
+            {HOME_CATEGORIES.map(({ label, val }) => (
+              <button
+                key={val}
+                className={`secondary-nav-link${activeCategory === val ? " active" : ""}`}
+                onClick={() => onCategoryChange?.(val)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Secondary nav: city tabs (Location) ── */}
+      {isLocation && (
+        <div className="secondary-nav">
+          <div className="secondary-nav-inner">
+            {CITIES.map((city) => (
+              <button
+                key={city}
+                className={`secondary-nav-link${activeCity === city.toLowerCase() ? " active" : ""}`}
+                onClick={() => onCityChange?.(city.toLowerCase())}
+              >
+                {city}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </header>
   );
 }

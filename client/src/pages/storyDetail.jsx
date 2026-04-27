@@ -1,34 +1,50 @@
 import { useParams, useNavigate } from "react-router-dom";
 import useContrast from "../hooks/useContrast";
 import Navbar from "../components/layout/Navbar";
+import Footer from "../components/layout/Footer";
 import ArticleItem from "../components/story/articleItem";
 
+const isRealImage = (url) => url && !url.includes("lh3.googleusercontent.com");
+
 export default function StoryDetail() {
-  const { id } = useParams();   // grabs the :id from the URL
+  const { id } = useParams();
   const navigate = useNavigate();
   const { story, loading, error } = useContrast(id);
 
-  // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) return (
-    <div style={{ minHeight: "100vh", background: "#F8F6F1" }}>
+    <div style={{ minHeight: "100vh" }}>
       <Navbar />
-      <div style={{ textAlign: "center", padding: "120px 0", color: "#9a9b95", fontFamily: "'Newsreader', serif", fontSize: "20px", fontStyle: "italic" }}>
-        Loading story…
+      <div style={{
+        textAlign: "center",
+        padding: "120px 0",
+        color: "var(--c-outline)",
+        fontFamily: "'Newsreader', serif",
+        fontSize: 22,
+        fontStyle: "italic",
+      }}>
+        Loading story...
       </div>
     </div>
   );
 
-  // ── Error ────────────────────────────────────────────────────────────────
   if (error) return (
-    <div style={{ minHeight: "100vh", background: "#F8F6F1" }}>
+    <div style={{ minHeight: "100vh" }}>
       <Navbar />
       <div style={{ textAlign: "center", padding: "120px 24px" }}>
-        <p style={{ color: "#b8281e", fontSize: "15px", marginBottom: "8px" }}>{error}</p>
+        <p style={{ color: "var(--c-secondary)", fontSize: 15, marginBottom: 8 }}>{error}</p>
         <button
           onClick={() => navigate("/")}
-          style={{ background: "none", border: "none", color: "#5a5c54", fontSize: "13px", cursor: "pointer", textDecoration: "underline" }}
+          style={{
+            background: "none",
+            border: "none",
+            color: "var(--c-outline)",
+            fontSize: 13,
+            cursor: "pointer",
+            textDecoration: "underline",
+            fontFamily: "'Public Sans', sans-serif",
+          }}
         >
-          ← Back to stories
+          Back to stories
         </button>
       </div>
     </div>
@@ -36,101 +52,151 @@ export default function StoryDetail() {
 
   if (!story) return null;
 
-  // When summary[] is empty (clusters data), show first 3 article titles instead
   const summaryPoints = story.summary?.length > 0
     ? story.summary
     : story.articles?.slice(0, 3).map(a => a.title) || [];
 
-  // Filter out Google News generic thumbnails
-  const isRealImage = (url) => url && !url.includes("lh3.googleusercontent.com");
   const heroImage = isRealImage(story.imageUrl)
     ? story.imageUrl
     : story.articles?.find(a => isRealImage(a.imageUrl))?.imageUrl || null;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F8F6F1" }}>
+    <div style={{ minHeight: "100vh" }}>
       <Navbar />
 
-      <main style={{ maxWidth: "860px", margin: "0 auto", padding: "52px 24px 80px" }}>
+      <main style={{ maxWidth: 900, margin: "0 auto", padding: "52px 24px 80px", animation: "fadeUp 0.4s ease both" }}>
 
-        {/* Back link */}
+        {/* ── Back button ── */}
         <button
           onClick={() => navigate("/")}
           style={{
-            background: "none", border: "none", cursor: "pointer",
-            fontSize: "11px", fontWeight: 600, letterSpacing: ".08em",
-            textTransform: "uppercase", color: "#9a9b95",
-            marginBottom: "28px", display: "flex", alignItems: "center", gap: "6px",
-            padding: 0, transition: "color .15s",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontFamily: "'Public Sans', sans-serif",
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "var(--c-outline)",
+            marginBottom: 36,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: 0,
+            transition: "color 0.15s",
           }}
-          onMouseEnter={e => e.currentTarget.style.color = "#31332C"}
-          onMouseLeave={e => e.currentTarget.style.color = "#9a9b95"}
+          onMouseEnter={e => e.currentTarget.style.color = "var(--c-on-surface)"}
+          onMouseLeave={e => e.currentTarget.style.color = "var(--c-outline)"}
         >
-          ← All Stories
+          All Stories
         </button>
 
         {/* ── Meta bar ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "22px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24, flexWrap: "wrap" }}>
           <span style={{
-            fontSize: "9px", fontWeight: 700, letterSpacing: ".14em",
-            textTransform: "uppercase", color: "#b8281e",
-            border: "1px solid #b8281e", padding: "3px 8px", borderRadius: "2px",
+            fontFamily: "'Public Sans', sans-serif",
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.16em",
+            textTransform: "uppercase",
+            color: "var(--c-secondary)",
+            border: "1px solid var(--c-secondary)",
+            padding: "3px 8px",
           }}>
             {story.category}
           </span>
-          <span style={{ width: "32px", height: "1px", background: "#ddd9ce" }} />
-          <span style={{ fontSize: "11px", fontWeight: 500, letterSpacing: ".1em", textTransform: "uppercase", color: "#9a9b95" }}>
-            {story.tags?.[0]} · {story.articleCount} sources
+          <span style={{ width: 32, height: 1, background: "var(--c-outline-variant)", display: "inline-block" }} />
+          <span style={{
+            fontFamily: "'Public Sans', sans-serif",
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: "var(--c-outline)",
+          }}>
+            {story.tags?.[0]} &middot; {story.articleCount} sources
           </span>
         </div>
 
         {/* ── Headline ── */}
         <h1 style={{
-          fontFamily: "'Newsreader', Georgia, serif",
-          fontSize: "clamp(28px, 5vw, 50px)",
-          fontWeight: 700, lineHeight: 1.08,
-          letterSpacing: "-.02em", color: "#31332C",
-          marginBottom: "36px",
-          animation: "fadeUp .5s ease both",
+          fontFamily: "'Newsreader', serif",
+          fontSize: "clamp(30px, 5vw, 54px)",
+          fontWeight: 700,
+          lineHeight: 1.07,
+          letterSpacing: "-0.025em",
+          color: "var(--c-on-surface)",
+          marginBottom: 40,
         }}>
           {story.headline}
         </h1>
 
-        {/* ── Image + Summary ── */}
+        {/* ── Hero image + summary ── */}
         <div style={{
           display: "grid",
           gridTemplateColumns: heroImage ? "1fr 1fr" : "1fr",
-          gap: "36px", marginBottom: "48px",
-          animation: "fadeUp .5s ease .1s both",
+          gap: 36,
+          marginBottom: 52,
         }}>
-          {/* Hero image */}
           {heroImage && (
-            <img
-              src={heroImage}
-              alt={story.headline}
-              style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", filter: "grayscale(15%)" }}
-            />
+            <div style={{ overflow: "hidden" }}>
+              <img
+                src={heroImage}
+                alt={story.headline}
+                style={{
+                  width: "100%",
+                  aspectRatio: "4/3",
+                  objectFit: "cover",
+                  transition: "filter 0.5s",
+                }}
+                />
+            </div>
           )}
 
-          {/* 3 summary bullet points (or article titles as fallback) */}
+          {/* Summary bullets */}
           <div>
+            <p style={{
+              fontFamily: "'Public Sans', sans-serif",
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              color: "var(--c-secondary)",
+              marginBottom: 16,
+            }}>
+              Key Points
+            </p>
             {summaryPoints.map((point, i) => (
-              <div key={i} style={{
-                display: "flex", gap: "14px",
-                padding: "16px 0",
-                borderBottom: "1px solid #ddd9ce",
-                borderTop: i === 0 ? "1px solid #ddd9ce" : "none",
-                animation: `fadeUp .5s ease ${0.15 + i * 0.08}s both`,
-              }}>
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  gap: 14,
+                  padding: "14px 0",
+                  borderBottom: "1px solid var(--c-outline-variant)",
+                  borderTop: i === 0 ? "1px solid var(--c-outline-variant)" : "none",
+                  animation: `fadeUp 0.4s ease ${0.1 + i * 0.07}s both`,
+                }}
+              >
                 <span style={{
-                  fontFamily: "'Newsreader', Georgia, serif",
-                  fontSize: "11px", fontWeight: 500,
-                  color: "#b8281e", minWidth: "18px",
-                  paddingTop: "3px", fontStyle: "italic",
+                  fontFamily: "'Newsreader', serif",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "var(--c-secondary)",
+                  minWidth: 20,
+                  paddingTop: 2,
+                  fontStyle: "italic",
                 }}>
                   {i + 1}.
                 </span>
-                <p style={{ fontSize: "13px", color: "#5a5c54", lineHeight: 1.65, margin: 0 }}>
+                <p style={{
+                  fontFamily: "'Public Sans', sans-serif",
+                  fontSize: 13,
+                  color: "var(--c-on-surface-variant)",
+                  lineHeight: 1.65,
+                  margin: 0,
+                }}>
                   {point}
                 </p>
               </div>
@@ -139,26 +205,38 @@ export default function StoryDetail() {
         </div>
 
         {/* ── Article count divider ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "4px" }}>
-          <span style={{ flex: 1, height: "1px", background: "#ddd9ce" }} />
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          marginBottom: 8,
+        }}>
+          <span style={{ flex: 1, height: 1, background: "var(--c-outline-variant)" }} />
           <span style={{
-            fontSize: "12px", fontWeight: 600, letterSpacing: ".08em",
-            textTransform: "uppercase", color: "#31332C",
-            textDecoration: "underline", textUnderlineOffset: "3px",
+            fontFamily: "'Public Sans', sans-serif",
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: "var(--c-on-surface)",
+            borderBottom: "1px solid var(--c-on-surface)",
+            paddingBottom: 2,
           }}>
-            {story.articleCount} articles
+            {story.articleCount} articles covering this story
           </span>
-          <span style={{ flex: 1, height: "1px", background: "#ddd9ce" }} />
+          <span style={{ flex: 1, height: 1, background: "var(--c-outline-variant)" }} />
         </div>
 
         {/* ── Article list ── */}
         <div>
           {story.articles?.map((article, i) => (
-            <ArticleItem key={article._id} article={article} index={i} />
+            <ArticleItem key={article._id || i} article={article} index={i} />
           ))}
         </div>
 
       </main>
+
+      <Footer />
     </div>
   );
 }
