@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 
 const API = "http://localhost:5000/api/stories";
 
-export default function useStories(category = "all") {
+export default function useStories(category = "all", maxArticles = null) {
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -18,9 +18,13 @@ export default function useStories(category = "all") {
     setStories([]);
     setTotalPages(999);
 
-    const url = category && category !== "all"
+    let url = category && category !== "all"
       ? `${API}?page=1&limit=10&category=${category}`
       : `${API}?page=1&limit=10`;
+
+    if (maxArticles) {
+      url += `&maxArticles=${maxArticles}`;
+    }
 
     fetch(url)
       .then((r) => r.json())
@@ -39,7 +43,7 @@ export default function useStories(category = "all") {
         setError(err.message);
         setLoading(false);
       });
-  }, [category]);
+  }, [category, maxArticles]);
 
   // Load next page
   function loadMore() {
@@ -48,9 +52,13 @@ export default function useStories(category = "all") {
     console.log("[useStories] loadMore called, fetching page", next);
     setLoadingMore(true);
 
-    const url = category && category !== "all"
+    let url = category && category !== "all"
       ? `${API}?page=${next}&limit=10&category=${category}`
       : `${API}?page=${next}&limit=10`;
+
+    if (maxArticles) {
+      url += `&maxArticles=${maxArticles}`;
+    }
 
     fetch(url)
       .then((r) => r.json())

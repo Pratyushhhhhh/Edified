@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+ENV/
+
+#Old Code
+scraper/
+
+# Sensitive Config
+scraperv2/config.py
+scraperv2/summarizer_checkpoint.json
+scraperv2/scratch.html
+
+# Node
+node_modules/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db

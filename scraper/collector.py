@@ -1,10 +1,3 @@
-"""
-collector.py
-------------
-Google News RSS → Real URL → Image → Full Content → MongoDB
-+ Rule-based category classification
-"""
-
 import re
 import json
 import base64

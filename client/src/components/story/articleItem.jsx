@@ -15,6 +15,26 @@ function stripHtml(html) {
     .trim();
 }
 
+function formatPublishedDate(dateString) {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+
+  const formattedDate = date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+
+  const formattedTime = date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true
+  });
+
+  return `Published on ${formattedDate} at ${formattedTime}`;
+}
+
 // One article row on the contrast page.
 // Shows: headline (linked), source, author, snippet, bias pill.
 export default function ArticleItem({ article, index }) {
@@ -44,6 +64,12 @@ export default function ArticleItem({ article, index }) {
           <>
             <span style={{ width: "3px", height: "3px", borderRadius: "50%", background: "#c4c0b6", display: "inline-block" }} />
             <span style={{ fontSize: "10px", color: "#9a9b95" }}>{article.author}</span>
+          </>
+        )}
+        {article.publishedAt && (
+          <>
+            <span style={{ width: "3px", height: "3px", borderRadius: "50%", background: "#c4c0b6", display: "inline-block" }} />
+            <span style={{ fontSize: "10px", color: "#9a9b95" }}>{formatPublishedDate(article.publishedAt)}</span>
           </>
         )}
         <span style={{ marginLeft: "auto" }}>

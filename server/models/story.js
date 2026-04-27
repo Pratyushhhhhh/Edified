@@ -97,11 +97,11 @@ const storySchema = new mongoose.Schema(
 
     // ── Bias distribution — the spectrum bar on the contrast page ──────────
     biasDistribution: {
-      left:        { type: Number, default: 0 },
-      centerLeft:  { type: Number, default: 0 },
-      center:      { type: Number, default: 0 },
+      left: { type: Number, default: 0 },
+      centerLeft: { type: Number, default: 0 },
+      center: { type: Number, default: 0 },
       centerRight: { type: Number, default: 0 },
-      right:       { type: Number, default: 0 },
+      right: { type: Number, default: 0 },
       // These counts are recomputed automatically in the pre-save hook
       // whenever articles are added or updated.
       //
@@ -157,11 +157,11 @@ storySchema.pre("save", function (next) {
     //    The contrast page reads this to show perspectival spread.
     const dist = { left: 0, centerLeft: 0, center: 0, centerRight: 0, right: 0 };
     this.articles.forEach((a) => {
-      if      (a.biasLabel === "left")         dist.left++;
-      else if (a.biasLabel === "center-left")  dist.centerLeft++;
-      else if (a.biasLabel === "center")       dist.center++;
+      if (a.biasLabel === "left") dist.left++;
+      else if (a.biasLabel === "center-left") dist.centerLeft++;
+      else if (a.biasLabel === "center") dist.center++;
       else if (a.biasLabel === "center-right") dist.centerRight++;
-      else if (a.biasLabel === "right")        dist.right++;
+      else if (a.biasLabel === "right") dist.right++;
     });
     this.biasDistribution = dist;
   }
@@ -173,6 +173,6 @@ storySchema.index({ latestPublishedAt: -1 });
 storySchema.index({ category: 1, latestPublishedAt: -1 });
 storySchema.index({ isActive: 1 });
 
-// Third argument forces Mongoose to use the "clusters" collection
+// Third argument forces Mongoose to use the "cluster_test_v2" collection
 // instead of auto-pluralizing "Story" → "stories".
-module.exports = mongoose.model("Story", storySchema, "clusters");
+module.exports = mongoose.model("Story", storySchema, "cluster_test_v2");

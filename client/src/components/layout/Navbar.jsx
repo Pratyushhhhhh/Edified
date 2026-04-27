@@ -68,6 +68,28 @@ export default function Navbar({ activeCategory, onCategoryChange }) {
             </button>
           );
         })}
+        <button
+          onClick={() => navigate("/blindspots")}
+          style={{
+            background: "none",
+            color: "#b8281e",
+            border: "1px solid #b8281e",
+            padding: "4px 12px",
+            borderRadius: "4px",
+            fontFamily: "'Public Sans', sans-serif",
+            fontSize: "10px",
+            fontWeight: 700,
+            letterSpacing: ".1em",
+            textTransform: "uppercase",
+            cursor: "pointer",
+            marginLeft: "16px",
+            transition: "all .15s",
+          }}
+          onMouseEnter={e => { e.target.style.background = "#b8281e"; e.target.style.color = "#F8F6F1"; }}
+          onMouseLeave={e => { e.target.style.background = "none"; e.target.style.color = "#b8281e"; }}
+        >
+          Blindspots
+        </button>
       </div>
     </nav>
   );

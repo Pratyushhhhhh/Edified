@@ -1,15 +1,3 @@
-"""
-cluster_rebuild.py
-------------------
-1. Clears the entire clusters collection
-2. Re-clusters all articles from raw_news_data using HDBSCAN
-3. For each cluster, picks a valid image from its articles
-4. Only saves clusters that have at least one article with a valid image
-
-Run:
-    pip install sentence-transformers scikit-learn numpy pymongo
-    python cluster_rebuild.py
-"""
 
 import uuid
 from datetime import datetime
@@ -71,14 +59,14 @@ def generate_bias_distribution(articles: list) -> dict:
 
 
 def run():
-    # ── Connect ───────────────────────────────────────────────────────────
+    #Connect 
     print("Connecting to MongoDB...")
     client = MongoClient(CONNECTION_STRING)
     db = client[DB_NAME]
     raw_col     = db["raw_news_data"]
     cluster_col = db["clusters"]
 
-    # ── Load articles ─────────────────────────────────────────────────────
+    #Load articles
     raw_articles = list(raw_col.find())
     total = len(raw_articles)
     if not total:
@@ -86,13 +74,13 @@ def run():
         return
     print(f"Loaded {total} articles from raw_news_data.")
 
-    # ── Embed titles ──────────────────────────────────────────────────────
+    #Embed titles
     print("Generating embeddings...")
     titles = [a.get("title", "") for a in raw_articles]
     model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
     embeddings = model.encode(titles, show_progress_bar=True)
 
-    # ── Cluster ───────────────────────────────────────────────────────────
+    #Cluster
     print("Clustering with HDBSCAN...")
     clusterer = HDBSCAN(min_cluster_size=2, metric="euclidean")
     labels = clusterer.fit_predict(embeddings)
@@ -100,7 +88,7 @@ def run():
     unique_labels = set(labels) - {-1}
     print(f"Found {len(unique_labels)} clusters ({labels.tolist().count(-1)} outliers ignored).")
 
-    # ── Group articles by cluster label ───────────────────────────────────
+    #Group articles by cluster label
     clusters_map = {}
     for idx, cluster_id in enumerate(labels):
         if cluster_id == -1:
@@ -111,7 +99,7 @@ def run():
         article["_id"] = str(article["_id"])
         clusters_map[cluster_id].append(article)
 
-    # ── Build cluster documents ───────────────────────────────────────────
+    #Build cluster documents
     final_clusters = []
     skipped_no_image = 0
 
@@ -144,7 +132,7 @@ def run():
         }
         final_clusters.append(cluster_doc)
     
-    # ── Clear old clusters and insert new ones ────────────────────────────
+    # Clear old clusters and insert new ones 
     print(f"\nClearing old clusters...")
     cluster_col.delete_many({})
     print(f"Deleted all existing clusters.")
@@ -155,7 +143,7 @@ def run():
     else:
         print("No valid clusters to insert.")
 
-    # ── Summary ───────────────────────────────────────────────────────────
+    #  Summary
     print(f"\n{'─' * 50}")
     print(f"Total clusters built    : {len(final_clusters)}")
     print(f"Skipped (no valid image): {skipped_no_image}")

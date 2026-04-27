@@ -250,6 +250,14 @@ Clicking a story card navigates here. The page shows:
 - **Hero image + Summary bullets** — side-by-side grid layout. If `summary[]` is empty, the first 3 article titles are shown as bullet points instead
 - **Article list** — each article shows source name, author, headline (linked), VISIT button, snippet (HTML-stripped), and bias label pill
 
+### Blindspots Page (`/blindspots`)
+
+This page highlights news stories that received limited coverage across media outlets.
+- Accessed via a dedicated "BLINDSPOTS" button in the Navigation bar.
+- Displays a grid of story cards similar to the home page, but specifically filtered to only show clusters with **1 or 2 news articles**.
+- Includes a banner explaining that these are articles not widely published by mainstream media.
+- Uses the same pagination and category filtering mechanics as the main cluster page.
+
 ---
 
 ## Setup & Installation
@@ -337,6 +345,14 @@ The backend runs on `http://localhost:5000` and the frontend on `http://localhos
 | `npm run preview` | `vite preview` | Preview production build |
 | `npm run lint` | `eslint .` | Run ESLint |
 
+### Pipeline & AI Scripts (Python)
+
+| Script | Command | Description |
+|--------|---------|-------------|
+| Scraper | `python scraper/cluster.py` | Runs the RSS fetching and clustering pipeline |
+| Summarizer | `python summary.py` | Uses HuggingFace (BART/Qwen) to generate fact-based bullet point summaries for clusters |
+| Bias Analyzer | `python bias_analyzer.py` | Uses `politicalBiasBERT` to evaluate and score the political bias of individual articles |
+
 ---
 
 ## Key Design Decisions
@@ -349,4 +365,6 @@ The backend runs on `http://localhost:5000` and the frontend on `http://localhos
 
 4. **Google News image filtering** — Image URLs from `lh3.googleusercontent.com` (generic Google News thumbnails) are detected and hidden. Only real article images from actual news sources are displayed.
 
-5. **Flexible schema** — No strict enum on `category`, `Mixed` type on `latestPublishedAt`, and `"unrated"` added to `biasLabel` — all to accommodate the varying data formats from the RSS clustering pipeline.
+5. **AI-Powered Summarization & Bias Detection** — Story summaries are dynamically generated using HuggingFace inference (BART for English, Qwen for multilingual). Article-level political bias is actively calculated using `bucketresearch/politicalBiasBERT` rather than relying purely on static publisher reputations.
+
+6. **Flexible schema** — No strict enum on `category`, `Mixed` type on `latestPublishedAt`, and `"unrated"` added to `biasLabel` — all to accommodate the varying data formats from the RSS clustering pipeline.

@@ -1,27 +1,18 @@
-"""
-update_categories.py
---------------------
-Re-classify existing articles in MongoDB and update category field
-(STRICT + IMPROVED VERSION)
-"""
+
 
 from pymongo import MongoClient
 import re
 
 CONNECTION_STRING = "mongodb+srv://pratyushbansal05_db_user:edi123@newscluster0.jenvf5c.mongodb.net/?retryWrites=true&w=majority"
 
-# -------------------------------
-# 🔹 Compile regex once (FASTER)
-# -------------------------------
+
 def compile_keywords(keywords):
     return [re.compile(rf"\b{k}\b") for k in keywords]
 
 def contains_word(text, patterns):
     return any(p.search(text) for p in patterns)
 
-# -------------------------------
-# 🔹 KEYWORDS (STRONG SET)
-# -------------------------------
+
 POLITICS_KW = compile_keywords([
     "bjp", "congress", "tmc", "aap", "nda", "upa",
     "election", "vote", "voter", "poll", "assembly",
@@ -60,9 +51,6 @@ TECH_KW = compile_keywords([
     "google", "microsoft", "apple", "meta", "openai"
 ])
 
-# -------------------------------
-# 🔹 CLASSIFIER (STRICT + PRIORITY)
-# -------------------------------
 def classify_category(text: str) -> str:
     text = text.lower()
 
@@ -90,9 +78,6 @@ def classify_category(text: str) -> str:
 
     return "General"
 
-# -------------------------------
-# 🔹 MAIN SCRIPT
-# -------------------------------
 def update_categories():
     client = MongoClient(CONNECTION_STRING)
     db = client["news_aggregator"]
@@ -108,7 +93,6 @@ def update_categories():
         snippet = article.get("snippet", "")
         content = article.get("fullContent", "")
 
-        # 🔥 better classification using content too
         text = f"{title} {snippet} {content[:1000]}"
 
         new_category = classify_category(text)

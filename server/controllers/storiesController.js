@@ -2,13 +2,18 @@ const Story = require("../models/story");
 
 const getStories = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, category } = req.query;
+    const { page = 1, limit = 10, category, maxArticles } = req.query;
 
     const filter = { isActive: true };
     if (category && category !== "all") filter.category = new RegExp(`^${category}$`, "i");
+    // Only fetch stories with 1 or 2 articles if maxArticles is provided
+    if (maxArticles) {
+      filter["articles"] = { $exists: true };
+      filter.$expr = { $lte: [{ $size: "$articles" }, Number(maxArticles)] };
+    }
 
     const stories = await Story.find(filter)
-      .sort({ latestPublishedAt: -1 })
+      .sort({ articleCount: -1, latestPublishedAt: -1 })
       .skip((page - 1) * Number(limit))
       .limit(Number(limit))
       .select("-articles.biasScore -__v");
