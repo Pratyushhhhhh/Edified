@@ -13,7 +13,7 @@ const getStories = async (req, res, next) => {
     }
 
     const stories = await Story.find(filter)
-      .sort({ latestPublishedAt: -1 })
+      .sort({ articleCount: -1, latestPublishedAt: -1 })
       .skip((page - 1) * Number(limit))
       .limit(Number(limit))
       .select("-articles.biasScore -__v");

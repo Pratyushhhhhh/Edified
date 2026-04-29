@@ -127,6 +127,11 @@ const storySchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    articleCount: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,       // adds createdAt, updatedAt
@@ -134,22 +139,18 @@ const storySchema = new mongoose.Schema(
   }
 );
 
-// ── Virtual field: articleCount ─────────────────────────────────────────────
-storySchema.virtual("articleCount").get(function () {
-  return this.articles.length;
-  // The contrast page shows "17 articles" above the list.
-  // This virtual computes it on-the-fly from the embedded array length —
-  // no need to store and sync a separate count field.
-});
+// Virtual field removed as it is now a stored field
 
 // ── Pre-save hook: keep derived fields in sync ──────────────────────────────
 storySchema.pre("save", function (next) {
   if (this.articles.length > 0) {
 
     // 1. latestPublishedAt — find the most recent article date
-    //    Used to sort stories on the cluster/home page feed.
     const dates = this.articles.map((a) => new Date(a.publishedAt));
     this.latestPublishedAt = new Date(Math.max(...dates));
+
+    // 2. articleCount — sync with articles array length
+    this.articleCount = this.articles.length;
 
     // 2. biasDistribution — count articles by label
     //    This runs every time a story is saved, so the distribution
@@ -169,6 +170,7 @@ storySchema.pre("save", function (next) {
 });
 
 // ── Indexes ─────────────────────────────────────────────────────────────────
+storySchema.index({ articleCount: -1, latestPublishedAt: -1 });
 storySchema.index({ latestPublishedAt: -1 });
 storySchema.index({ category: 1, latestPublishedAt: -1 });
 storySchema.index({ isActive: 1 });
