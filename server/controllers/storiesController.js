@@ -4,7 +4,7 @@ const getStories = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, category, maxArticles } = req.query;
 
-    const filter = { isActive: true };
+    const filter = { isActive: { $ne: false } }; // Matches true or missing
     if (category && category !== "all") filter.category = new RegExp(`^${category}$`, "i");
     // Only fetch stories with 1 or 2 articles if maxArticles is provided
     if (maxArticles) {
@@ -13,7 +13,7 @@ const getStories = async (req, res, next) => {
     }
 
     const stories = await Story.find(filter)
-      .sort({ articleCount: -1, latestPublishedAt: -1 })
+      .sort({ latestPublishedAt: -1 })
       .skip((page - 1) * Number(limit))
       .limit(Number(limit))
       .select("-articles.biasScore -__v");
