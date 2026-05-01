@@ -95,7 +95,7 @@ export default function Navbar({
         </div>
       </nav>
 
-      {/* ── Secondary nav: category tabs (Home & Blindspots) ── */}
+      {/* Secondary nav: category tabs (Home & Blindspots) */}
       {(isHome || isBlindspots) && (
         <div className="secondary-nav">
           <div className="secondary-nav-inner">
@@ -118,7 +118,7 @@ export default function Navbar({
         </div>
       )}
 
-      {/* ── Secondary nav: city tabs (Location) ── */}
+      {/* Secondary nav: city tabs (Location) */}
       {isLocation && (
         <div className="secondary-nav">
           <div className="secondary-nav-inner">

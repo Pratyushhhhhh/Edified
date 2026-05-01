@@ -22,7 +22,7 @@ function getImg(story) {
 
 export default function Location() {
   const [activeCity, setActiveCity] = useState("delhi");
-  // Stories filtered by location tag — the server will support ?location= when tags are added
+  // Stories filtered by location tag 
   const { stories, loading, loadingMore, error, hasMore, loadMore } = useStories("all", null, activeCity);
 
   const hero    = stories[0] || null;
@@ -65,7 +65,7 @@ export default function Location() {
 
         {!loading && !error && stories.length > 0 && (
           <>
-            {/* ── Hero Section ── */}
+            {/* Hero Section */}
             {hero && (
               <section style={{
                 display: "grid",
@@ -143,7 +143,7 @@ export default function Location() {
               </section>
             )}
 
-            {/* ── 3-column grid ── */}
+            {/* 3-column grid */}
             {gridCards.length > 0 && (
               <div style={{
                 display: "grid",
@@ -210,7 +210,7 @@ export default function Location() {
               </div>
             )}
 
-            {/* ── Wide card + briefs row ── */}
+            {/* Wide card + briefs row */}
             {(wideCard || briefs.length > 0) && (
               <div style={{
                 display: "grid",
@@ -300,7 +300,7 @@ export default function Location() {
               </div>
             )}
 
-            {/* ── Location Analytics ── */}
+            {/* Location Analytics */}
             <section style={{ border: "1px solid var(--c-on-surface)", marginBottom: 40 }}>
               <div style={{ display: "grid", gridTemplateColumns: "4fr 8fr" }}>
                 <div style={{ padding: 32, borderRight: "1px solid var(--c-on-surface)" }}>
@@ -393,7 +393,7 @@ export default function Location() {
           </>
         )}
 
-        {/* ── Load More ── */}
+        {/* Load More */}
         {!loading && !error && hasMore && (
           <div style={{ textAlign: "center", padding: "52px 0 20px" }}>
             <button className="btn-load-more" onClick={loadMore} disabled={loadingMore}>

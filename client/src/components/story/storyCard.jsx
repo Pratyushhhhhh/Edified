@@ -8,9 +8,10 @@ function getDisplayImage(story) {
   return story.articles?.find(a => isRealImage(a.imageUrl))?.imageUrl || null;
 }
 
-// ─────────────────────────────────────────────────────────────
-// variant = "default" | "hero" | "secondary" | "compact" | "location"
-// ─────────────────────────────────────────────────────────────
+// variant = "default" 
+// "hero" | "secondary"
+// "compact" 
+// "location"
 export default function StoryCard({ story, variant = "default" }) {
   const navigate = useNavigate();
   const displayImage = getDisplayImage(story);
@@ -25,7 +26,7 @@ export default function StoryCard({ story, variant = "default" }) {
   return <DefaultCard story={story} displayImage={displayImage} onClick={handleClick} />;
 }
 
-// ── Hero (main featured story) ────────────────────────────────
+//Hero 
 function HeroCard({ story, displayImage, onClick }) {
   return (
     <article
@@ -73,7 +74,7 @@ function HeroCard({ story, displayImage, onClick }) {
   );
 }
 
-// ── Secondary (medium 4:3 card) ───────────────────────────────
+// Secondary  
 function SecondaryCard({ story, displayImage, onClick }) {
   return (
     <article
@@ -119,7 +120,7 @@ function SecondaryCard({ story, displayImage, onClick }) {
   );
 }
 
-// ── Compact (text-only, sidebar) ──────────────────────────────
+// Compact 
 function CompactCard({ story, onClick }) {
   return (
     <div
@@ -170,7 +171,7 @@ function CompactCard({ story, onClick }) {
   );
 }
 
-// ── Location card (image + info, columnar) ────────────────────
+// Location card 
 function LocationCard({ story, displayImage, onClick }) {
   return (
     <article
@@ -241,7 +242,7 @@ function LocationCard({ story, displayImage, onClick }) {
   );
 }
 
-// ── Default (standard grid card) ─────────────────────────────
+// Default
 function DefaultCard({ story, displayImage, onClick }) {
   return (
     <article

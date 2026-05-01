@@ -66,7 +66,7 @@ export default function StoryDetail() {
 
       <main style={{ maxWidth: 900, margin: "0 auto", padding: "52px 24px 80px", animation: "fadeUp 0.4s ease both" }}>
 
-        {/* ── Back button ── */}
+        {/* Back button */}
         <button
           onClick={() => navigate("/")}
           style={{
@@ -92,7 +92,7 @@ export default function StoryDetail() {
           All Stories
         </button>
 
-        {/* ── Meta bar ── */}
+        {/* Meta bar */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24, flexWrap: "wrap" }}>
           <span style={{
             fontFamily: "'Public Sans', sans-serif",
@@ -119,7 +119,7 @@ export default function StoryDetail() {
           </span>
         </div>
 
-        {/* ── Headline ── */}
+        {/* Headline */}
         <h1 style={{
           fontFamily: "'Newsreader', serif",
           fontSize: "clamp(30px, 5vw, 54px)",
@@ -132,7 +132,7 @@ export default function StoryDetail() {
           {story.headline}
         </h1>
 
-        {/* ── Hero image + summary ── */}
+        {/* Hero image + summary */}
         <div style={{
           display: "grid",
           gridTemplateColumns: heroImage ? "1fr 1fr" : "1fr",
@@ -204,7 +204,7 @@ export default function StoryDetail() {
           </div>
         </div>
 
-        {/* ── Article count divider ── */}
+        {/* Article count divider */}
         <div style={{
           display: "flex",
           alignItems: "center",
@@ -227,7 +227,7 @@ export default function StoryDetail() {
           <span style={{ flex: 1, height: 1, background: "var(--c-outline-variant)" }} />
         </div>
 
-        {/* ── Article list ── */}
+        {/* Article list */}
         <div>
           {story.articles?.map((article, i) => (
             <ArticleItem key={article._id || i} article={article} index={i} />

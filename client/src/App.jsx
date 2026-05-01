@@ -9,19 +9,14 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Home — story cluster grid with category sidebar */}
         <Route path="/" element={<Home />} />
 
-        {/* Story detail — full contrast view */}
         <Route path="/story/:id" element={<StoryDetail />} />
 
-        {/* Blindspots — underreported stories */}
         <Route path="/blindspots" element={<Blindspots />} />
 
-        {/* Location — city-tagged stories */}
         <Route path="/location" element={<Location />} />
 
-        {/* About Us — static editorial page */}
         <Route path="/about" element={<AboutUs />} />
       </Routes>
     </BrowserRouter>
