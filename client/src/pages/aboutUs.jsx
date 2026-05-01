@@ -183,7 +183,7 @@ export default function AboutUs() {
           </div>
         </section>
 
-        {/* ── Contributors ── */}
+        {/* Contributors  */}
         <section style={{ maxWidth: 1536, margin: "0 auto", padding: "72px 40px", borderBottom: `1px solid ${BORDER}` }}>
           <h2 style={{
             fontFamily: "'Public Sans', sans-serif",
@@ -276,7 +276,7 @@ export default function AboutUs() {
           </div>
         </section>
 
-        {/* ── History Timeline ── */}
+        {/* History Timeline */}
         <section style={{ maxWidth: 1536, margin: "0 auto", padding: "72px 40px", borderBottom: `1px solid ${BORDER}` }}>
           <h2 style={{
             fontFamily: "'Public Sans', sans-serif",
@@ -335,7 +335,7 @@ export default function AboutUs() {
           </div>
         </section>
 
-        {/* ── Contact ── */}
+        {/* Contact */}
         <section style={{ maxWidth: 1536, margin: "0 auto", padding: "72px 40px" }}>
           <h2 style={{
             fontFamily: "'Public Sans', sans-serif",
