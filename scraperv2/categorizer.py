@@ -3,12 +3,6 @@ from pymongo import MongoClient
 from config import log, MONGO_URI, DB_NAME, COL_RAW_ARTICLES
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  KEYWORD DEFINITIONS (English + Hindi)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-# Each tuple is (category_name, keyword_list, weight)
-# Weight allows some categories to score higher on strong matches
 CATEGORY_RULES = [
     ("Politics", [
         "election", "vote", "voter", "poll", "assembly", "parliament",
