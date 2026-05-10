@@ -1,14 +1,3 @@
-/*
-  seed.js — fills MongoDB with realistic story data for development.
-
-  Run with:  node seed.js
-
-  Each story now has:
-  - summary as a [String] array (3 bullet points for the contrast page)
-  - imageUrl for the hero image
-  - articles with author, imageUrl, biasLabel, biasScore
-  - coverSource matching one of the article sources
-*/
 
 require("dotenv").config();
 const mongoose = require("mongoose");

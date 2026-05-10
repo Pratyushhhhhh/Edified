@@ -5,14 +5,14 @@ import StoryCard from "../components/story/storyCard";
 import useStories from "../hooks/useStories";
 
 const SIDEBAR_CATS = [
-  { label: "General", val: "general", icon: "newspaper" },
-  { label: "World", val: "world", icon: "public" },
-  { label: "Politics", val: "politics", icon: "gavel" },
-  { label: "Business", val: "business", icon: "payments" },
-  { label: "Culture", val: "culture", icon: "theater_comedy" },
-  { label: "Science", val: "science", icon: "science" },
-  { label: "Health", val: "health", icon: "health_and_safety" },
-  { label: "Technology", val: "technology", icon: "devices" },
+  { label: "General",    val: "general",    icon: "newspaper" },
+  { label: "World",      val: "world",       icon: "public" },
+  { label: "Politics",   val: "politics",    icon: "gavel" },
+  { label: "Business",   val: "business",    icon: "payments" },
+  { label: "Science",    val: "science",     icon: "science" },
+  { label: "Health",     val: "health",      icon: "health_and_safety" },
+  { label: "Technology", val: "technology",  icon: "devices" },
+  { label: "Sports",     val: "sports",      icon: "sports_cricket" },
 ];
 
 const ORWELL_QUOTE = '\u201cTrue journalism is printing what someone else does not want printed; everything else is public relations.\u201d';

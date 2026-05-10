@@ -1,4 +1,8 @@
 from pymongo import MongoClient
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import MONGO_URI, DB_NAME, COL_RAW_ARTICLES, COL_CLUSTERS
 
 def run():

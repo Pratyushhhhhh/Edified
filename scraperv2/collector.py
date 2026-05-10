@@ -1,24 +1,3 @@
-"""
-scraperv2/collector.py
-──────────────────────
-Fast, parallel article fetcher.
-
-Flow:
-  1. Read sources from MongoDB `sources` collection
-  2. For each source, try native RSS first, fall back to Google News RSS
-  3. Resolve Google News redirect URLs via base64 decode + HTTP redirect
-  4. Extract article content via newspaper3k
-  5. Extract images via og:image / twitter:image meta tags
-  6. Deduplicate by normalised title per source
-  7. Insert into `test_v2` collection
-
-Key improvements over v1:
-  - ThreadPoolExecutor for parallel fetching (8 threads)
-  - No Playwright dependency
-  - Articles are NEVER skipped for missing images
-  - Title-based deduplication prevents 27+ duplicates
-"""
-
 import re
 import base64
 import hashlib

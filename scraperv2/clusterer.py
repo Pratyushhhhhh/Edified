@@ -1,17 +1,6 @@
-"""
-scraperv2/clusterer.py
-──────────────────────
-Groups articles into news story clusters using semantic embeddings + HDBSCAN.
-
-Improvements over v1:
-  - Embeds title + first 200 chars of content (richer signal)
-  - Uses cosine distance instead of euclidean (better for text embeddings)
-  - Clusters MUST have at least 1 article with an image — articles without images
-    are still included in the cluster, but imageless clusters use a placeholder
-  - Writes to `cluster_test_v2` collection
-  - Never deletes old clusters — does a full replace on each run
-"""
-
+import hashlib
+import json
+import re
 from datetime import datetime, timezone
 import numpy as np
 from pymongo import MongoClient, UpdateOne
@@ -61,6 +50,21 @@ def generate_bias_distribution(articles: list) -> dict:
         else:
             dist["center"] += 1
     return dist
+
+
+def extract_source_name(article: dict) -> str:
+    s = article.get("source_name") or article.get("source") or article.get("outlet") or ""
+    if s:
+        return str(s).strip()
+    url = article.get("url") or article.get("real_url") or ""
+    m = re.search(r"(?:https?://)?(?:www\.)?([^/.]+)", url)
+    return m.group(1).capitalize() if m else "Unknown"
+
+
+def cluster_fingerprint(articles: list) -> str:
+    """Generate a stable ID based on the sorted titles of the articles in the cluster."""
+    hashes = sorted(a.get("title_hash") or a.get("title", "") for a in articles)
+    return hashlib.md5(json.dumps(hashes).encode()).hexdigest()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -196,7 +200,7 @@ def run():
             clusters_with_image += 1
         else:
             clusters_without_image += 1
-            best_image = get_placeholder_image(lead.get("source_name", ""))   # use branded placeholder
+            best_image = get_placeholder_image(extract_source_name(lead))
 
         cluster_doc = {
             "headline":         lead.get("title", ""),
@@ -206,7 +210,7 @@ def run():
             "tags":             list(set(t for a in articles for t in a.get("tags", []))),
             "articles":         articles,
             "articleCount":     len(articles),
-            "coverSource":      lead.get("source_name", ""),
+            "coverSource":      extract_source_name(lead),
             "biasDistribution": generate_bias_distribution(articles),
             "isActive":         True,
             "latestPublishedAt": lead.get("publishedAt", ""),
@@ -224,7 +228,7 @@ def run():
                 img = candidate
                 break
         if not img:
-            img = get_placeholder_image(article.get("source_name", ""))
+            img = get_placeholder_image(extract_source_name(article))
 
         cluster_doc = {
             "headline":         article.get("title", ""),
@@ -234,7 +238,7 @@ def run():
             "tags":             article.get("tags", []),
             "articles":         [article],
             "articleCount":     1,
-            "coverSource":      article.get("source_name", ""),
+            "coverSource":      extract_source_name(article),
             "biasDistribution": generate_bias_distribution([article]),
             "isActive":         True,
             "latestPublishedAt": article.get("publishedAt", ""),
@@ -243,11 +247,56 @@ def run():
         }
         final_clusters.append(cluster_doc)
 
-    # Replace collection
-    log.info(f"Clearing old {COL_CLUSTERS} and inserting {len(final_clusters)} clusters...")
-    cluster_col.delete_many({})
-    if final_clusters:
-        cluster_col.insert_many(final_clusters)
+    # ─────────────────────────────────────────────────────────────────────────────
+    #  DATABASE UPSERT
+    # ─────────────────────────────────────────────────────────────────────────────
+    log.info(f"Writing {len(final_clusters)} clusters to {COL_CLUSTERS} (upserting)...")
+    
+    ops = []
+    seen_fps = set()
+
+    for cluster_doc in final_clusters:
+        fp = cluster_fingerprint(cluster_doc["articles"])
+        seen_fps.add(fp)
+        cluster_doc["clusterFingerprint"] = fp
+
+        ops.append(UpdateOne(
+            {"clusterFingerprint": fp},
+            {
+                "$setOnInsert": {
+                    "summary": [],
+                    "generatedHeadline": "",
+                    "summaryModel": "",
+                    "createdAt": datetime.now(timezone.utc),
+                    "clusterFingerprint": fp,
+                },
+                "$set": {
+                    "headline":         cluster_doc["headline"],
+                    "imageUrl":         cluster_doc["imageUrl"],
+                    "category":         cluster_doc["category"],
+                    "tags":             cluster_doc["tags"],
+                    "articles":         cluster_doc["articles"],
+                    "articleCount":     cluster_doc["articleCount"],
+                    "coverSource":      cluster_doc["coverSource"],
+                    "biasDistribution": cluster_doc["biasDistribution"],
+                    "isActive":         True,
+                    "updatedAt":        datetime.now(timezone.utc),
+                    "latestPublishedAt": cluster_doc["latestPublishedAt"],
+                }
+            },
+            upsert=True,
+        ))
+
+    if ops:
+        result = cluster_col.bulk_write(ops)
+        log.info(f"Upsert result: {result.upserted_count} new, {result.modified_count} modified.")
+
+    # Soft-delete clusters not seen in this run (they dissolved or changed significantly)
+    del_result = cluster_col.update_many(
+        {"clusterFingerprint": {"$nin": list(seen_fps)}},
+        {"$set": {"isActive": False}}
+    )
+    log.info(f"Soft-deleted {del_result.modified_count} stale clusters.")
 
     # Report
     multi = sum(1 for c in final_clusters if len(c["articles"]) >= 2)

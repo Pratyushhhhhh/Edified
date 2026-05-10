@@ -1,20 +1,3 @@
-"""
-scraperv2/orchestrator.py
-─────────────────────────
-Master pipeline runner. Executes each stage in sequence with timing.
-
-Usage:
-    python scraperv2/orchestrator.py            # run once
-    python scraperv2/orchestrator.py --loop     # run every 2 hours
-
-Stages:
-    1. Collector   — fetch new articles from RSS feeds
-    2. Categorizer — classify article categories
-    3. Clusterer   — group articles into story clusters
-    4. Summarizer  — generate factual summaries per cluster
-    5. Bias        — score political bias per article
-"""
-
 import sys
 import time
 import argparse
@@ -60,15 +43,16 @@ def run_pipeline():
     from collector import run as collect
     from categorizer import run as categorize
     from clusterer import run as cluster
-    from summarizer_v3 import run as summarize
+    from summarizer_priority import run as summarize
     from bias_analyzer import run as analyze_bias
+    from location_tagger import run as tag_locations
 
     stages = [
-        ("Collector",   collect),
-        ("Categorizer", categorize),
-        ("Clusterer",   cluster),
-        ("Summarizer",  summarize),
-        ("Bias Analyzer", analyze_bias),
+        ("Collector",           collect),
+        ("Categorizer",         categorize),
+        ("Clusterer",           cluster),
+        ("Bias Analyzer",       analyze_bias),
+        ("Location Tagger",     tag_locations),
     ]
 
     results = {}
@@ -95,7 +79,7 @@ def main():
     )
     parser.add_argument(
         "--stage",
-        choices=["collect", "categorize", "cluster", "summarize", "bias"],
+        choices=["collect", "categorize", "cluster", "summarize", "summarize_priority", "bias", "location"],
         help="Run a single stage instead of the full pipeline",
     )
     args = parser.parse_args()
@@ -103,11 +87,13 @@ def main():
     if args.stage:
         # Run a single stage
         stage_map = {
-            "collect":    ("Collector",    lambda: __import__("collector").run()),
-            "categorize": ("Categorizer",  lambda: __import__("categorizer").run()),
-            "cluster":    ("Clusterer",    lambda: __import__("clusterer").run()),
-            "summarize":  ("Summarizer",   lambda: __import__("summarizer_v3").run()),
-            "bias":       ("Bias Analyzer",lambda: __import__("bias_analyzer").run()),
+            "collect":             ("Collector",            lambda: __import__("collector").run()),
+            "categorize":          ("Categorizer",          lambda: __import__("categorizer").run()),
+            "cluster":             ("Clusterer",            lambda: __import__("clusterer").run()),
+            "summarize":           ("Summarizer v3",        lambda: __import__("summarizer_v3").run()),
+            "summarize_priority":  ("Summarizer Priority",  lambda: __import__("summarizer_priority").run()),
+            "bias":                ("Bias Analyzer",        lambda: __import__("bias_analyzer").run()),
+            "location":            ("Location Tagger",      lambda: __import__("location_tagger").run()),
         }
         name, func = stage_map[args.stage]
         run_stage(name, func)

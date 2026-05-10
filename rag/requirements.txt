@@ -1,0 +1,8 @@
+# RAG-specific dependencies
+# (sentence-transformers, pymongo, python-dotenv, requests are already installed)
+
+chromadb>=0.4.0
+fastapi>=0.100.0
+uvicorn>=0.23.0
+PyPDF2>=3.0.0
+python-multipart>=0.0.6

@@ -6,6 +6,21 @@ import ArticleItem from "../components/story/articleItem";
 
 const isRealImage = (url) => url && !url.includes("lh3.googleusercontent.com");
 
+/** Strip LLM formatting artifacts from a summary point string. */
+function cleanPoint(raw) {
+  if (!raw) return "";
+  let text = raw;
+  // Remove leading "HEADLINE: " prefix
+  text = text.replace(/^HEADLINE:\s*/i, "");
+  // Remove leading "POINT N — Some label:\n?" prefix
+  text = text.replace(/^POINT\s+\d+\s*[—\-–]\s*[^:\n]+:\s*\n?/i, "");
+  // Remove trailing "(Articles: 1, 2, 3)" citation
+  text = text.replace(/\s*\(Articles?:[\s\d,]+\)\s*$/i, "");
+  // Remove orphaned leftover labels like "POINT 1 — Main event:" mid-text
+  text = text.replace(/POINT\s+\d+\s*[—\-–]\s*[^:\n]+:\s*/gi, "");
+  return text.trim();
+}
+
 export default function StoryDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -52,8 +67,10 @@ export default function StoryDetail() {
 
   if (!story) return null;
 
+  const POINT_LABELS = ["Main Event", "Context", "Key Facts"];
+
   const summaryPoints = story.summary?.length > 0
-    ? story.summary
+    ? story.summary.map(cleanPoint).filter(Boolean)
     : story.articles?.slice(0, 3).map(a => a.title) || [];
 
   const heroImage = isRealImage(story.imageUrl)
@@ -154,7 +171,6 @@ export default function StoryDetail() {
             </div>
           )}
 
-          {/* Summary bullets */}
           <div>
             <p style={{
               fontFamily: "'Public Sans', sans-serif",
@@ -171,30 +187,29 @@ export default function StoryDetail() {
               <div
                 key={i}
                 style={{
-                  display: "flex",
-                  gap: 14,
-                  padding: "14px 0",
+                  padding: "16px 0",
                   borderBottom: "1px solid var(--c-outline-variant)",
                   borderTop: i === 0 ? "1px solid var(--c-outline-variant)" : "none",
                   animation: `fadeUp 0.4s ease ${0.1 + i * 0.07}s both`,
                 }}
               >
-                <span style={{
-                  fontFamily: "'Newsreader', serif",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "var(--c-secondary)",
-                  minWidth: 20,
-                  paddingTop: 2,
-                  fontStyle: "italic",
-                }}>
-                  {i + 1}.
-                </span>
                 <p style={{
                   fontFamily: "'Public Sans', sans-serif",
-                  fontSize: 13,
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  color: "var(--c-secondary)",
+                  marginBottom: 6,
+                  opacity: 0.7,
+                }}>
+                  {POINT_LABELS[i] ?? `Point ${i + 1}`}
+                </p>
+                <p style={{
+                  fontFamily: "'Public Sans', sans-serif",
+                  fontSize: 13.5,
                   color: "var(--c-on-surface-variant)",
-                  lineHeight: 1.65,
+                  lineHeight: 1.72,
                   margin: 0,
                 }}>
                   {point}

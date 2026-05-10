@@ -2,14 +2,16 @@ const Story = require("../models/story");
 
 const getStories = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, category, maxArticles } = req.query;
+    const { page = 1, limit = 10, category, maxArticles, location } = req.query;
 
-    const filter = { isActive: { $ne: false } }; // Matches true or missing
+    const filter = { isActive: { $ne: false } };
     if (category && category !== "all") filter.category = new RegExp(`^${category}$`, "i");
-    // Only fetch stories with 1 or 2 articles if maxArticles is provided
     if (maxArticles) {
       filter["articles"] = { $exists: true };
       filter.$expr = { $lte: [{ $size: "$articles" }, Number(maxArticles)] };
+    }
+    if (location && location !== "all") {
+      filter.locations = new RegExp(location, "i");
     }
 
     const stories = await Story.find(filter)

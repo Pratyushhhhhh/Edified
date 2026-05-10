@@ -14,6 +14,8 @@ scraper/category.py
 scraper/collector.py
 scraper/cluster_rebuild.py
 
+GUIDE/
+
 # Sensitive Config
 scraperv2/config.py
 scraperv2/summarizer_checkpoint.json

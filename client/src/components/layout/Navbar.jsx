@@ -11,7 +11,7 @@ const HOME_CATEGORIES = [
   { label: "World", val: "world", icon: "public" },
   { label: "Politics", val: "politics", icon: "gavel" },
   { label: "Business", val: "business", icon: "payments" },
-  { label: "Culture", val: "culture", icon: "theater_comedy" },
+  { label: "Sports", val: "sports", icon: "sports_cricket" },
   { label: "Science", val: "science", icon: "science" },
   { label: "Health", val: "health", icon: "health_and_safety" },
   { label: "Technology", val: "technology", icon: "devices" },
@@ -118,7 +118,7 @@ export default function Navbar({
         </div>
       )}
 
-      {/* ── Secondary nav: city tabs (Location) ── */}
+      {/* ── Secondary nav: city tabs (Location) ──
       {isLocation && (
         <div className="secondary-nav">
           <div className="secondary-nav-inner">
@@ -133,7 +133,7 @@ export default function Navbar({
             ))}
           </div>
         </div>
-      )}
+      )} */}
     </header>
   );
 }

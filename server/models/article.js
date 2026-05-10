@@ -1,33 +1,5 @@
 const mongoose = require("mongoose");
 
-/*
-  Article is an EMBEDDED schema — it has no collection of its own.
-  Every article lives inside a Story document (story.articles[]).
-
-  WHY EMBEDDED?
-  The contrast page loads ONE story and immediately renders ALL its
-  articles. If articles were stored separately, we'd need a second
-  DB query ("give me all articles where storyId = X"). Embedding
-  collapses that to a single query — the Story document carries
-  everything the contrast page needs in one round trip.
-
-  FIELDS USED BY THE CONTRAST PAGE:
-  ┌─────────────────┬─────────────────────────────────────────────┐
-  │ title           │ Article headline shown in the list          │
-  │ url             │ "Visit" link — opens original article       │
-  │ source          │ Outlet name (BBC, Reuters, etc.)            │
-  │ author          │ Byline shown under headline                 │
-  │ publishedAt     │ "X hours ago" timestamp                     │
-  │ snippet         │ 1-2 sentence excerpt on the article row     │
-  │ imageUrl        │ Thumbnail (future: shown per article)       │
-  │ biasScore       │ -1 to 1 float — drives the bias bar width   │
-  │ biasLabel       │ Text label shown in the bias pill           │
-  └─────────────────┴─────────────────────────────────────────────┘
-
-  fullContent is excluded from normal queries (select: false) because
-  it can be several KB per article. The contrast page doesn't render
-  full article text — it just shows snippets and links out.
-*/
 const articleSchema = new mongoose.Schema({
   // ── Core fields (used by both cluster card AND contrast page) ──────────────
   title: {

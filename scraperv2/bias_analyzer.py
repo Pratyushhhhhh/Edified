@@ -1,14 +1,4 @@
-"""
-scraperv2/bias_analyzer.py
-──────────────────────────
-Runs politicalBiasBERT on all articles within clusters to assign per-article
-bias scores and update the cluster-level bias distribution.
 
-Improvements over v1:
-  - Batched inference (process BIAS_BATCH_SIZE articles at once)
-  - Uses title + content[:400] for richer context
-  - Operates on cluster_test_v2
-"""
 
 import sys
 import torch

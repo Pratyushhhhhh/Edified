@@ -1,16 +1,3 @@
-"""
-scraperv2/categorizer.py
-────────────────────────
-Multi-signal keyword-based category classifier.
-
-Improvements over v1:
-  - Scoring system: each category gets a score, highest wins (no first-match bias)
-  - Added Sports, Entertainment categories
-  - Hindi keyword support for major categories
-  - Uses title + snippet + first 500 chars of content
-  - Case-insensitive word-boundary matching
-"""
-
 import re
 from pymongo import MongoClient
 from config import log, MONGO_URI, DB_NAME, COL_RAW_ARTICLES

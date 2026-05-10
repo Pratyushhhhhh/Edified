@@ -1,52 +1,132 @@
-# ScraperV2 — Advanced News Aggregation Pipeline
+# 📰 Edified News Pipeline (Scraper V2)
 
-This directory contains the production-ready, asynchronous news scraping and processing pipeline (`v2`), entirely replacing the legacy Playwright-based system.
+Welcome to the heart of **The Edified** news aggregation platform. `scraperv2` is a modern, AI-driven, highly scalable Python backend designed to ingest, process, cluster, and analyze thousands of news articles daily while rigorously respecting API rate limits.
 
-## Pipeline Architecture
-The pipeline is designed as a series of modular stages orchestrated by `orchestrator.py`. All data is temporarily stored in `test_v2` and clustered into `cluster_test_v2`.
+---
 
-### Core Files
-1. **`orchestrator.py`**
-   - The master controller. Runs the full pipeline sequentially.
-   - Can be run once (`python orchestrator.py`) or on a 2-hour loop (`python orchestrator.py --loop`).
-   - Supports running single stages via `--stage <name>`.
+## 🏗️ Pipeline Architecture
 
-2. **`collector_cron.py`**
-   - A standalone daemon that runs exclusively the `collector` stage every 30 minutes.
-   - Used to aggressively fetch breaking news articles without waiting for the heavier AI processing stages.
+The pipeline operates in a sequence of specialized stages, managed by the **`orchestrator.py`**. The workflow is designed to be resilient, ensuring that data is preserved and enhanced at each step.
 
-3. **`config.py`**
-   - Centralized configuration (MongoDB URIs, API keys, Model endpoints, thresholds).
+```mermaid
+graph TD
+    A[Sources Collection] -->|RSS Feeds| B(1. Collector)
+    B -->|Raw Articles| C[(test_v2 DB)]
+    C --> D(2. Categorizer)
+    D -->|Topic Scoring| C
+    C --> E(3. Clusterer)
+    E -->|Semantic Grouping| F[(cluster_test_v2 DB)]
+    F --> G(4. Bias Analyzer)
+    G -->|Political Leaning| F
+    F --> H(5. Location Tagger)
+    H -->|Geographic Tags| F
+    F --> I(6. Summarizer Priority)
+    I -->|AI Headlines & Summaries| F
+```
 
-### Pipeline Stages
-1. **`collector.py`** (Stage 1)
-   - Fetches articles from sources. We bypass Google News blocks by heavily relying on **Native Direct RSS Feeds** (over 30 sources explicitly mapped).
-   - Downloads HTML, extracts full text, and extracts high-quality `top_image`.
-   - Includes robust `title_hash` deduplication to prevent flooding the database.
+---
 
-2. **`categorizer.py`** (Stage 2)
-   - Assigns a primary category (Politics, Tech, Health, etc.) based on keyword heuristics and content analysis.
+## 🛠️ Tech Stack & Core Dependencies
 
-3. **`clusterer.py`** (Stage 3)
-   - The engine of the aggregator. Uses `sentence-transformers` and `HDBSCAN` to semantically group articles covering the same event into a single "Cluster".
-   - **Key Features:** Uses Cosine Distance for high accuracy. Generates gorgeous **Dynamic Branded Placeholders** (e.g., a dark blue image with the word "Reuters") if a real image fails to load. Strips out duplicate articles within the same cluster. Tracks cluster size (`articleCount`) for frontend sorting.
+*   **Language:** Python 3.10+
+*   **Database:** MongoDB Atlas (via `pymongo`)
+*   **Web Extraction:** `newspaper3k`, `feedparser`, `requests`, `BeautifulSoup4`
+*   **Machine Learning / NLP:** 
+    *   `sentence-transformers` (`all-MiniLM-L6-v2` for semantic clustering)
+    *   `hdbscan` (Density-based clustering algorithm)
+    *   `transformers` & `torch` (HuggingFace `politicalBiasBERT` for bias analysis)
+*   **Large Language Models (LLMs):**
+    *   **Groq API** (`llama-3.1-8b-instant`) — Primary: Ultra-fast, cheap summarization.
+    *   **Google Gemini API** (`gemini-2.0-flash`) — Fallback: Automated rate-limit protection.
 
-4. **`summarizer.py`** (Stage 4)
-   - Generates 3 strictly factual bullet points for every cluster.
-   - **Key Features:** Language-aware. Uses `BART` for English news and seamlessly falls back to `Qwen2.5-72B` for Hindi/regional news.
-   - *Note: Configured to support parallel multi-token execution to bypass Hugging Face rate limits.*
+---
 
-5. **`bias_analyzer.py`** (Stage 5)
-   - Runs `bucketresearch/politicalBiasBERT` to evaluate the political leaning of every article (Left to Right) and calculates a bias distribution for the overall cluster.
+## 🔄 The Pipeline Stages In Detail
 
-### Diagnostic Tools
-- **`_diagnose.py`**: High-level comparison between the legacy `v1` and the new `v2` pipeline performance.
-- **`_diagnose_cluster.py`**: Specialized script that calculates exactly what percentage of articles and clusters successfully retrieved real thumbnail images.
-- **`_check_dups.py`**: Utility to scan the MongoDB collections for duplicate titles.
+### 1. 📥 Data Collection (`collector.py`)
+*   **Input:** RSS feed URLs from MongoDB (`sources` collection).
+*   **Action:** Fetches feeds in parallel using an 8-thread `ThreadPoolExecutor`. Decodes obfuscated Google News redirect URLs to find the actual publisher link. Downloads full HTML content, extracting the main text, publish dates, and hero images using `newspaper3k`.
+*   **Deduplication:** Prevents identical articles from polluting the database using an MD5 hash of the article title.
+*   **Output:** Saves raw articles to the `test_v2` collection.
 
-## Major Enhancements Over Legacy Pipeline
-* **Speed:** Eliminated headless Playwright browsers, reducing fetch times drastically.
-* **Image Success Rate:** Transitioned from Google News redirect scraping to direct RSS feeds, jumping our valid image extraction rate from ~20% to **>67%**.
-* **Hotlink Bypassing:** Added `no-referrer` tags to the React frontend so news sites (like BBC/Al Jazeera) can no longer block their images from rendering on our site.
-* **Smart Placeholders:** Failed images no longer show broken icons; they display a sleek, text-branded placeholder matching the news organization's name.
-* **Intelligent UI Sorting:** Clusters are now sorted natively by their `articleCount` size, ensuring the biggest breaking news stories automatically rise to the top of the feed.
+### 2. 🏷️ Categorization (`categorizer.py`)
+*   **Input:** Raw articles from `test_v2`.
+*   **Action:** Scans the title, snippet, and the first 500 characters of the article content against a weighted keyword dictionary. Supports both **English and Hindi** keywords.
+*   **Scoring:** Each category (General, Politics, Sports, Business, etc.) accumulates points. The highest score wins, eliminating the flaws of "first-match" regex tagging.
+*   **Output:** Updates the `category` field on raw articles.
+
+### 3. 🧠 Semantic Clustering (`clusterer.py`)
+*   **Input:** Categorized articles from `test_v2`.
+*   **Action:** Groups individual articles discussing the exact same real-world event into unified "Stories" (Clusters).
+*   **Mechanism:** Combines the title and first 200 characters to generate mathematical embeddings via `sentence-transformers`. These are clustered using **HDBSCAN** and cosine distance.
+*   **Preservation (Upsert):** Generates a unique "content fingerprint" for each cluster. Instead of wiping the database on every run, it **UPSERTS** the clusters. This preserves previously generated AI summaries while allowing breaking news articles to join existing stories.
+*   **Output:** Writes unified clusters to the `cluster_test_v2` collection.
+
+### 4. ⚖️ Bias Analysis (`bias_analyzer.py`)
+*   **Input:** Unified clusters from `cluster_test_v2`.
+*   **Action:** Calculates the political leaning (Left, Center, Right) of every article within a cluster.
+*   **Mechanism:** Loads the `politicalBiasBERT` model locally. Uses **Batched Inference** (processing 16 articles simultaneously) to drastically reduce execution time.
+*   **Output:** Aggregates individual scores to create a `biasDistribution` object on the cluster.
+
+### 5. 📍 Location Tagging (`location_tagger.py`)
+*   **Input:** Articles and Clusters.
+*   **Action:** Assigns geographical metadata to power the frontend Location map and feeds.
+*   **Mechanism:** A highly precise, zero-cost regex script. Operates **strictly on the title** to prevent false positives (e.g., stopping a Delhi local story from being tagged as "Uttar Pradesh" just because the UP CM was mentioned). Automatically tags Indian news (non-World categories) as "All India".
+*   **Output:** Appends to the `locations` array on articles and clusters.
+
+### 6. ✨ AI Summarization (`summarizer_priority.py`)
+*   **Input:** High-value clusters from `cluster_test_v2`.
+*   **Action:** Generates a professional 3-point bulleted summary and a punchy editorial headline.
+*   **Mechanism:** 
+    *   **Token-Efficient:** Targets only high-priority clusters (3+ articles). Truncates article contexts to 150 words to keep prompts tiny.
+    *   **Primary LLM:** Calls Groq (`llama-3.1-8b-instant`) asking for a strict structural format.
+    *   **Fallback:** Automatically routes to Google Gemini if Groq rate limits (429 errors) are hit.
+*   **Output:** Populates `summary` and `generatedHeadline` fields. Maintains a `summarizer_checkpoint.json` file to safely resume interrupted runs.
+
+---
+
+## ⚙️ Configuration & Setup
+
+All configuration is centralized in `config.py`. Ensure you have a `.env` file in the `scraperv2` directory with the following variables:
+
+```env
+MONGO_URI="mongodb+srv://<user>:<pass>@cluster..."
+DB_NAME="news_aggregator"
+
+GROQ_API_KEY="gsk_..."
+GEMINI_API_KEY="AIzaSy..."
+
+# Optional: For downloading models faster
+HF_TOKEN_1="hf_..."
+```
+
+---
+
+## 🚀 Execution Guide
+
+The entire system is controlled via `orchestrator.py`.
+
+### Automated Data Gathering
+Run the standard pipeline (Collect $\rightarrow$ Categorize $\rightarrow$ Cluster $\rightarrow$ Bias $\rightarrow$ Location). This is safe to run frequently as it preserves AI summaries.
+```bash
+python scraperv2/orchestrator.py
+```
+
+**Run continuously (Every 2 hours):**
+```bash
+python scraperv2/orchestrator.py --loop
+```
+
+### Manual/Scheduled AI Summarization
+Because LLM APIs have strict rate limits, summarization is decoupled from the main automated loop. Run this **once daily** (or via a separate cron job) to summarize new breaking stories:
+```bash
+python scraperv2/orchestrator.py --stage summarize_priority
+```
+
+### Debugging Individual Stages
+You can isolate any step of the pipeline if you need to test changes:
+```bash
+python scraperv2/orchestrator.py --stage collect
+python scraperv2/orchestrator.py --stage cluster
+python scraperv2/orchestrator.py --stage location
+```

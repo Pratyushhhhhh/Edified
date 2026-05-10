@@ -1,0 +1,2 @@
+# This directory holds the ChromaDB vector store files.
+# It is auto-populated when you run ingest.py.

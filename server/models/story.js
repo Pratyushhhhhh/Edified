@@ -1,23 +1,6 @@
 const mongoose = require("mongoose");
 const articleSchema = require("./article");
 
-/*
-  Story is the top-level MongoDB document — one Story = one news event
-  covered by multiple outlets. It is the central data structure for
-  BOTH pages:
-
-  CLUSTER PAGE  → reads many Stories, uses only: headline, summary[0],
-                  imageUrl, category, tags, articleCount, latestPublishedAt
-                  (the feed endpoint strips heavy fields)
-
-  CONTRAST PAGE → reads ONE Story by ID, uses EVERYTHING:
-                  headline, summary[], imageUrl, category, tags,
-                  articles[] (with bias), biasDistribution, articleCount
-
-  Because the contrast page is a detail view of a single story, and the
-  cluster page is a list view, the same MongoDB document serves both —
-  the difference is just how much of it we send.
-*/
 const storySchema = new mongoose.Schema(
   {
     headline: {

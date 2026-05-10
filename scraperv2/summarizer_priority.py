@@ -1,42 +1,45 @@
-
-
 import re
+import sys
 import time
 import json
+import argparse
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
 from pymongo import MongoClient
-from langdetect import detect, LangDetectException
 
 from config import (
     log, MONGO_URI, DB_NAME, COL_CLUSTERS,
     GROQ_API_KEY, GEMINI_API_KEY,
-    MAX_ARTICLES_FOR_SUMMARY,
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  CONSTANTS
+#  TUNABLE CONSTANTS  ← tweak these to balance speed vs quality
 # ─────────────────────────────────────────────────────────────────────────────
 
-GROQ_RPM_SLEEP    = 12.0    # safe for 6K TPM models (~1000 tok/call = 5 calls/min max)
-GROQ_DAILY_LIMIT  = 950     # real limit 1000, leave 50 buffer
-GEMINI_RPM_SLEEP  = 5.0     # 12 RPM safe (real limit 15 RPM)
-WORDS_PER_ARTICLE = 300     # truncate each article to this many words
-CHECKPOINT_FILE   = Path("summarizer_checkpoint.json")
+MIN_ARTICLE_COUNT   = 3       # skip clusters with fewer articles than this
+MAX_CLUSTERS        = 150     # hard cap — never process more than this many
+WORDS_PER_ARTICLE   = 150     # truncate each article (was 300 in v3)
+MAX_ARTICLES_IN_CTX = 8      # max articles to feed the LLM (was 10 in v3)
 
-GROQ_MODEL   = "llama-3.3-70b-versatile"  # current active model
-GEMINI_MODEL = "gemini-2.0-flash"
+# llama-3.1-8b-instant: 30 RPM, 14,400 TPM free tier
+# ~800 tokens/call → 18 calls/min by TPM → safe at 4s sleep = 15 calls/min
+GROQ_MODEL        = "llama-3.1-8b-instant"
+GROQ_RPM_SLEEP    = 8.0
+GROQ_DAILY_LIMIT  = 950
 
+GEMINI_MODEL      = "gemini-2.0-flash"
+GEMINI_RPM_SLEEP  = 5.0
+
+CHECKPOINT_FILE = Path("summarizer_checkpoint.json")
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  CHECKPOINT
+#  CHECKPOINT  (shared with summarizer_v3)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def load_checkpoint() -> set:
-    """Load set of already-completed cluster IDs from disk."""
     if CHECKPOINT_FILE.exists():
         data = json.loads(CHECKPOINT_FILE.read_text())
         ids = set(data.get("completed_ids", []))
@@ -46,7 +49,6 @@ def load_checkpoint() -> set:
 
 
 def save_checkpoint(completed_ids: set):
-    """Persist completed cluster IDs. Called after every successful cluster."""
     CHECKPOINT_FILE.write_text(json.dumps({
         "completed_ids": list(completed_ids),
         "last_updated": datetime.now(timezone.utc).isoformat(),
@@ -54,18 +56,7 @@ def save_checkpoint(completed_ids: set):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  LANGUAGE DETECTION
-# ─────────────────────────────────────────────────────────────────────────────
-
-def detect_language(text: str) -> str:
-    try:
-        return detect(text[:500])
-    except LangDetectException:
-        return "en"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  CONTENT EXTRACTION
+#  TEXT HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
 
 def get_article_text(article: dict) -> str:
@@ -78,104 +69,63 @@ def get_article_text(article: dict) -> str:
     return article.get("snippet", "").strip()
 
 
-def truncate_to_words(text: str, max_words: int) -> str:
-    """Keep first max_words words of text."""
+def truncate_words(text: str, n: int) -> str:
     words = text.split()
-    if len(words) <= max_words:
-        return text
-    return " ".join(words[:max_words]) + "..."
+    return text if len(words) <= n else " ".join(words[:n]) + "..."
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  SOURCE EXTRACTION
-# ─────────────────────────────────────────────────────────────────────────────
-
-def extract_source_name(article: dict) -> str:
-    source = (
-        article.get("source_name")
-        or article.get("source")
-        or article.get("outlet")
-        or article.get("domain")
-        or ""
+def extract_source(article: dict) -> str:
+    s = (
+        article.get("source_name") or article.get("source") or
+        article.get("outlet") or article.get("domain") or ""
     )
-    if source:
-        return str(source).strip()
-
-    url = article.get("url") or article.get("real_url") or article.get("link") or ""
-    if url:
-        match = re.search(r"(?:https?://)?(?:www\.)?([^/\.]+)", url)
-        if match:
-            return match.group(1).capitalize()
-
-    return "Unknown"
+    if s:
+        return str(s).strip()
+    url = article.get("url") or article.get("real_url") or ""
+    m = re.search(r"(?:https?://)?(?:www\.)?([^/.]+)", url)
+    return m.group(1).capitalize() if m else "Unknown"
 
 
-def prepare_articles_for_prompt(cluster: dict) -> list:
-    """Extract and prepare article content for the prompt."""
-    articles = cluster.get("articles", [])
-    prepared = []
+# ─────────────────────────────────────────────────────────────────────────────
+#  PROMPT BUILDER  — single call for HEADLINE + 3 POINTS
+# ─────────────────────────────────────────────────────────────────────────────
 
-    for art in articles[:MAX_ARTICLES_FOR_SUMMARY]:
+def build_prompt(original_headline: str, articles: list) -> str:
+    blocks = []
+    for i, art in enumerate(articles[:MAX_ARTICLES_IN_CTX], 1):
+        src  = extract_source(art)
         text = get_article_text(art)
-        if not text or len(text) < 30:
-            continue
-        prepared.append({
-            "source": extract_source_name(art),
-            "text": text,
-        })
-
-    return prepared
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  PROMPT BUILDER
-#  Token math:
-#    10 articles × 300 words × ~1.3 tokens/word ≈ 3900 input tokens
-#    + template ~200 tokens + output ~600 tokens = ~4700 total
-#    Groq llama-3.3-70b: 6000 TPM → safe ✓
-# ─────────────────────────────────────────────────────────────────────────────
-
-def build_prompt(headline: str, articles: list) -> str:
-    article_blocks = []
-    for i, art in enumerate(articles, 1):
-        source = art.get("source", f"Source {i}")
-        text   = truncate_to_words(art.get("text", ""), WORDS_PER_ARTICLE)
         if text:
-            article_blocks.append(f"[ARTICLE {i} — {source}]\n{text}")
+            text = truncate_words(text, WORDS_PER_ARTICLE)
+            blocks.append(f"[ARTICLE {i} — {src}]\n{text}")
 
-    articles_str = "\n\n".join(article_blocks)
+    articles_str = "\n\n".join(blocks)
+    n = len(blocks)
 
-    prompt = f"""You are a factual news summarizer. Below are {len(articles)} articles from different outlets covering the same news story.
+    return f"""You are a factual news editor. The {n} articles below all cover the same news story.
 
-Headline: {headline}
+Original headline: {original_headline}
 
 {articles_str}
 
 ---
 
-Produce EXACTLY 3 points. Each point must be at least 50 words. Follow this format precisely:
+Write ALL of the following in this EXACT format. Do not add any text before HEADLINE or after POINT 3.
 
-POINT 1 — Main angle:
-Write what the main event/development is. At the end, in parentheses, list which article numbers cover this angle: (Articles: 1, 3, 5)
+HEADLINE: One crisp, neutral, factual headline. Maximum 12 words. No clickbait.
 
-POINT 2 — Different perspective or secondary angle:
-Write a different viewpoint, additional context, or angle that some outlets emphasize. At the end: (Articles: 2, 4)
+POINT 1 — Main event:
+What happened — the core facts. Minimum 40 words. At the end, cite articles: (Articles: 1, 2)
 
-POINT 3 — Hard facts only:
-List only verified facts: specific numbers, dates, names, statistics, official statements. No opinions. At the end: (Articles: 1, 2, 3, 4, 5)
+POINT 2 — Context or second angle:
+Background, cause, or a different perspective some outlets emphasize. Minimum 40 words. (Articles: X, Y)
 
-Rules:
-- Each point must be at least 50 words
-- Do not add any text before POINT 1 or after POINT 3
-- Do not use bullet sub-points within a point
-- If articles are in a non-English language, respond in the same language
-- Only cite article numbers that actually discuss that angle"""
-
-    return prompt
+POINT 3 — Verified facts only:
+Only specific numbers, dates, names, official statements. No opinions. Minimum 40 words. (Articles: X, Y)"""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  GROQ API
+#  GROQ
 # ─────────────────────────────────────────────────────────────────────────────
 
 class GroqRateLimitError(Exception):
@@ -195,10 +145,7 @@ def _call_groq(prompt: str) -> str:
         if _groq_calls_today >= GROQ_DAILY_LIMIT:
             raise GroqDailyLimitReached("Groq daily budget exhausted")
         _groq_calls_today += 1
-        current_count = _groq_calls_today
-
-    if not GROQ_API_KEY:
-        raise ValueError("GROQ_API_KEY not set")
+        count = _groq_calls_today
 
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -207,13 +154,10 @@ def _call_groq(prompt: str) -> str:
     payload = {
         "model": GROQ_MODEL,
         "messages": [
-            {
-                "role": "system",
-                "content": "You are a factual news summarizer. Follow the output format exactly."
-            },
-            {"role": "user", "content": prompt}
+            {"role": "system", "content": "You are a factual news editor. Follow the output format exactly."},
+            {"role": "user", "content": prompt},
         ],
-        "max_tokens": 600,
+        "max_tokens": 500,
         "temperature": 0.2,
         "top_p": 0.9,
     }
@@ -222,35 +166,23 @@ def _call_groq(prompt: str) -> str:
         try:
             resp = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=60,
+                headers=headers, json=payload, timeout=60,
             )
-
             if resp.status_code == 429:
                 retry_after = int(resp.headers.get("retry-after", 60))
-                # If the wait is long (>30s), don't block — let Gemini handle this cluster
                 if retry_after > 30:
-                    log.warning(f"    Groq 429 — wait {retry_after}s is too long, handing off to Gemini")
                     raise GroqRateLimitError(f"Groq rate-limited ({retry_after}s wait)")
                 log.warning(f"    Groq 429 — waiting {retry_after}s (attempt {attempt+1}/3)")
                 time.sleep(retry_after)
                 continue
-
-            if resp.status_code == 413:
-                log.warning("    Groq 413 — prompt too large")
-                raise ValueError("Prompt too large")
-
             if resp.status_code != 200:
                 log.warning(f"    Groq error {resp.status_code}: {resp.text[:200]}")
                 time.sleep(10)
                 continue
-
             data = resp.json()
             text = data["choices"][0]["message"]["content"].strip()
-            log.info(f"    Groq call #{current_count} OK ({data['usage']['total_tokens']} tokens)")
+            log.info(f"    Groq call #{count} OK ({data['usage']['total_tokens']} tokens)")
             return text
-
         except requests.Timeout:
             log.warning(f"    Groq timeout (attempt {attempt+1})")
             time.sleep(15)
@@ -265,52 +197,39 @@ def _call_groq(prompt: str) -> str:
 def _call_gemini(prompt: str) -> str:
     if not GEMINI_API_KEY:
         raise ValueError("GEMINI_API_KEY not set")
-
     url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
         f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
     )
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "maxOutputTokens": 600,
-            "temperature": 0.2,
-        },
+        "generationConfig": {"maxOutputTokens": 500, "temperature": 0.2},
     }
-
     for attempt in range(3):
         try:
             resp = requests.post(url, json=payload, timeout=60)
-
             if resp.status_code == 429:
                 wait = int(resp.headers.get("retry-after", 60))
                 log.warning(f"    Gemini 429 — waiting {wait}s")
                 time.sleep(wait)
                 continue
-
             if resp.status_code != 200:
                 log.warning(f"    Gemini error {resp.status_code}: {resp.text[:200]}")
                 time.sleep(10)
                 continue
-
             data = resp.json()
             candidates = data.get("candidates", [])
             if not candidates:
-                log.warning("    Gemini returned no candidates")
                 return ""
-            text = candidates[0]["content"]["parts"][0]["text"].strip()
-            log.info("    Gemini fallback OK")
-            return text
-
+            return candidates[0]["content"]["parts"][0]["text"].strip()
         except requests.Timeout:
             log.warning(f"    Gemini timeout (attempt {attempt+1})")
             time.sleep(15)
-
     return ""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  UNIFIED CALLER — Groq → Gemini automatic fallback
+#  UNIFIED CALLER
 # ─────────────────────────────────────────────────────────────────────────────
 
 _using_gemini_fallback = False
@@ -325,90 +244,86 @@ def call_llm(prompt: str) -> str:
             time.sleep(GROQ_RPM_SLEEP)
             return result
         except GroqDailyLimitReached:
-            log.warning("★ Groq daily limit reached — switching to Gemini for rest of session")
+            log.warning("★ Groq daily limit reached — switching permanently to Gemini")
             _using_gemini_fallback = True
         except GroqRateLimitError as e:
-            # Groq is in a cooling period — use Gemini for THIS cluster only, then retry Groq next time
-            log.warning(f"    {e} — using Gemini for this cluster (Groq will retry next)")
+            log.warning(f"    {e} — using Gemini for this cluster only")
             result = _call_gemini(prompt)
             time.sleep(GEMINI_RPM_SLEEP)
             return result
 
-    # Permanent Gemini fallback (daily limit exhausted)
     result = _call_gemini(prompt)
     time.sleep(GEMINI_RPM_SLEEP)
     return result
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  RESPONSE PARSER
+#  RESPONSE PARSER  — extracts HEADLINE + 3 POINTS from one response
 # ─────────────────────────────────────────────────────────────────────────────
 
-def parse_three_points(text: str) -> list:
-    """Parse LLM output into up to 3 point strings."""
-    points = []
+def parse_response(text: str) -> tuple[str, list]:
+    """
+    Returns (generated_headline, [point1, point2, point3]).
+    Headline falls back to "" if not found.
+    Points fall back to paragraph splits.
+    """
+    # Extract headline
+    headline = ""
+    headline_match = re.search(r"HEADLINE:\s*(.+?)(?:\n|$)", text, re.IGNORECASE)
+    if headline_match:
+        headline = headline_match.group(1).strip()
 
-    # Primary: split on POINT N pattern
-    segments = re.split(r"POINT\s+\d+\s*[—\-–:]", text, flags=re.IGNORECASE)
+    # Extract 3 points — split on POINT N pattern
+    segments = re.split(r"POINT\s+\d+\s*[—\-–:][^\n]*\n?", text, flags=re.IGNORECASE)
     segments = [s.strip() for s in segments if s.strip() and len(s.strip()) > 30]
 
+    points = []
     if len(segments) >= 2:
         for seg in segments[:3]:
-            # Strip section label if it got pulled in
-            cleaned = re.sub(r"^[^\n:]+:\s*\n?", "", seg, count=1).strip()
-            if not cleaned:
-                cleaned = seg.strip()
-            if len(cleaned) > 30:
+            cleaned = re.sub(r"^[^\n:]+:\s*\n?", "", seg, count=1).strip() or seg.strip()
+            if len(cleaned) > 20:
                 points.append(cleaned)
 
     # Fallback: paragraph splits
     if len(points) < 2:
-        paragraphs = [p.strip() for p in text.split("\n\n") if len(p.strip()) > 50]
-        points = paragraphs[:3]
-
-    # Last resort: sentence grouping
-    if len(points) < 2:
-        sentences = re.split(r"(?<=[.!?])\s+", text.strip())
-        sentences = [s.strip() for s in sentences if len(s.strip()) > 30]
-        if len(sentences) >= 2:
-            chunk = max(1, len(sentences) // 3)
-            points = [
-                " ".join(sentences[:chunk]),
-                " ".join(sentences[chunk:chunk*2]),
-                " ".join(sentences[chunk*2:]),
-            ]
-            points = [p for p in points if p]
+        paras = [p.strip() for p in text.split("\n\n") if len(p.strip()) > 40]
+        points = paras[:3]
 
     if not points:
-        points = [text[:1000].strip()]
+        points = [text[:800].strip()]
 
-    return points[:3]
+    return headline, points[:3]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  MAIN — single-threaded (Groq free tier: 30 RPM, 4s sleep = 15 RPM safe)
+#  MAIN
 # ─────────────────────────────────────────────────────────────────────────────
 
-def run():
-    log.info("=== Summarizer v3 (Groq + Gemini fallback) starting ===")
+def run(min_articles: int = MIN_ARTICLE_COUNT, max_clusters: int = MAX_CLUSTERS):
+    log.info(f"=== Summarizer PRIORITY (min_articles={min_articles}, cap={max_clusters}) ===")
+    log.info(f"    Model: {GROQ_MODEL} | Words/article: {WORDS_PER_ARTICLE} | Max articles: {MAX_ARTICLES_IN_CTX}")
 
     if not GROQ_API_KEY:
-        log.error("GROQ_API_KEY not set in config.py!")
+        log.error("GROQ_API_KEY not set!")
         return
     if not GEMINI_API_KEY:
-        log.warning("GEMINI_API_KEY not set — no fallback if Groq daily limit hits")
+        log.warning("GEMINI_API_KEY not set — no fallback available")
 
-    log.info("Connecting to MongoDB...")
-    mongo_client = MongoClient(MONGO_URI)
-    cluster_col = mongo_client[DB_NAME][COL_CLUSTERS]
+    client = MongoClient(MONGO_URI)
+    cluster_col = client[DB_NAME][COL_CLUSTERS]
 
-    clusters = list(cluster_col.find({}, {"_id": 1, "headline": 1, "articles": 1, "summary": 1}))
-    total = len(clusters)
-    log.info(f"Found {total} clusters in {COL_CLUSTERS}")
+    # Load top clusters sorted by articleCount DESC, filtered by min size
+    log.info(f"Loading clusters with articleCount >= {min_articles}, sorted by size...")
+    clusters = list(
+        cluster_col.find(
+            {"articleCount": {"$gte": min_articles}},
+            {"_id": 1, "headline": 1, "articles": 1, "summary": 1, "articleCount": 1}
+        ).sort("articleCount", -1).limit(max_clusters)
+    )
+    log.info(f"Found {len(clusters)} qualifying clusters (cap: {max_clusters})")
 
     completed_ids = load_checkpoint()
 
-    # Skip clusters that EITHER are in the checkpoint OR already have 3 summary points in DB
     def already_done(c):
         if str(c["_id"]) in completed_ids:
             return True
@@ -416,33 +331,41 @@ def run():
         return isinstance(existing, list) and len(existing) >= 3
 
     pending = [c for c in clusters if not already_done(c)]
-    db_skipped = sum(1 for c in clusters if isinstance(c.get("summary"), list) and len(c.get("summary", [])) >= 3)
-    log.info(f"Pending: {len(pending)} | Checkpoint: {len(completed_ids)} | DB already summarized: {db_skipped}")
+    log.info(f"Pending: {len(pending)} | Already done: {len(clusters) - len(pending)}")
 
     if not pending:
-        log.info("All clusters already summarized. Delete summarizer_checkpoint.json to re-run.")
+        log.info("All qualifying clusters are already summarized.")
         return
+
+    # Estimate time
+    est_min = (len(pending) * (GROQ_RPM_SLEEP + 1)) / 60
+    log.info(f"Estimated time: ~{est_min:.0f} minutes at {GROQ_RPM_SLEEP}s/call")
 
     success = failed = skipped = 0
     start_time = time.time()
 
     for i, cluster in enumerate(pending, 1):
-        headline = cluster.get("headline", "Unknown")
-        log.info(f"\n[{i}/{len(pending)}] {headline[:70]}")
+        headline    = cluster.get("headline", "Unknown")
+        art_count   = cluster.get("articleCount", 0)
+        log.info(f"\n[{i}/{len(pending)}] ({art_count} articles) {headline[:70]}")
 
-        articles = prepare_articles_for_prompt(cluster)
+        # Collect article texts
+        articles_raw = cluster.get("articles", [])
+        usable = []
+        for art in articles_raw[:MAX_ARTICLES_IN_CTX]:
+            text = get_article_text(art)
+            if text and len(text) > 30:
+                usable.append({"source": extract_source(art), "text": text})
 
-        if not articles:
-            log.warning("  → No content, skipping")
+        if not usable:
+            log.warning("  → No usable content, skipping")
             skipped += 1
             completed_ids.add(str(cluster["_id"]))
             save_checkpoint(completed_ids)
             continue
 
-        lang = detect_language(articles[0]["text"])
-        log.info(f"  → {len(articles)} articles, lang: {lang}")
-
-        prompt = build_prompt(headline, articles)
+        log.info(f"  → {len(usable)} articles with content")
+        prompt = build_prompt(headline, usable)
 
         try:
             raw_response = call_llm(prompt)
@@ -452,45 +375,52 @@ def run():
             continue
 
         if not raw_response:
-            log.warning("  → Empty LLM response")
+            log.warning("  → Empty response")
             failed += 1
             continue
 
-        points = parse_three_points(raw_response)
-        log.info(f"  → Parsed {len(points)} points")
+        gen_headline, points = parse_response(raw_response)
+        log.info(f"  → Headline: {gen_headline[:80]}")
+        log.info(f"  → {len(points)} points parsed")
         for j, p in enumerate(points, 1):
-            log.info(f"     P{j}: {p[:90]}...")
+            log.info(f"     P{j}: {p[:80]}...")
 
-        cluster_col.update_one(
-            {"_id": cluster["_id"]},
-            {"$set": {
-                "summary":      points,
-                "summaryRaw":   raw_response,
-                "summaryModel": "gemini" if _using_gemini_fallback else "groq",
-                "updatedAt":    datetime.now(timezone.utc),
-            }},
-        )
+        update = {
+            "summary":            points,
+            "summaryRaw":         raw_response,
+            "summaryModel":       "gemini" if _using_gemini_fallback else f"groq/{GROQ_MODEL}",
+            "updatedAt":          datetime.now(timezone.utc),
+        }
+        # Only overwrite headline if we got a clean one from the LLM
+        if gen_headline and len(gen_headline) > 5:
+            update["generatedHeadline"] = gen_headline
 
+        cluster_col.update_one({"_id": cluster["_id"]}, {"$set": update})
         completed_ids.add(str(cluster["_id"]))
         save_checkpoint(completed_ids)
         success += 1
 
-        if i % 50 == 0:
+        if i % 25 == 0:
             elapsed = time.time() - start_time
             rate = i / elapsed * 60
-            eta_min = (len(pending) - i) / max(rate, 0.1)
-            log.info(f"\n  ── Progress: {i}/{len(pending)} | {rate:.1f}/min | ETA: {eta_min:.0f} min ──")
+            eta  = (len(pending) - i) / max(rate, 0.1)
+            log.info(f"\n  ── Progress: {i}/{len(pending)} | {rate:.1f}/min | ETA: {eta:.0f} min ──")
 
     elapsed_total = time.time() - start_time
     log.info(f"\n{'═' * 50}")
     log.info(f"Success  : {success}")
     log.info(f"Skipped  : {skipped}")
     log.info(f"Failed   : {failed}")
-    log.info(f"Total    : {total}")
-    log.info(f"Groq calls used : {_groq_calls_today} / {GROQ_DAILY_LIMIT}")
-    log.info(f"Time elapsed    : {elapsed_total/60:.1f} min")
-    log.info(f"Gemini fallback : {'Yes' if _using_gemini_fallback else 'No'}")
+    log.info(f"Groq calls: {_groq_calls_today} / {GROQ_DAILY_LIMIT}")
+    log.info(f"Time      : {elapsed_total/60:.1f} min")
+    log.info(f"Gemini fallback: {'Yes' if _using_gemini_fallback else 'No'}")
 
 
 if __name__ == "__main__":
-    run()
+    parser = argparse.ArgumentParser(description="Priority summarizer — top clusters first")
+    parser.add_argument("--min-articles", type=int, default=MIN_ARTICLE_COUNT,
+                        help=f"Only summarize clusters with >= N articles (default: {MIN_ARTICLE_COUNT})")
+    parser.add_argument("--max-clusters", type=int, default=MAX_CLUSTERS,
+                        help=f"Hard cap on clusters to process (default: {MAX_CLUSTERS})")
+    args = parser.parse_args()
+    run(min_articles=args.min_articles, max_clusters=args.max_clusters)
