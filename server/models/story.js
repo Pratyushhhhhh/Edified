@@ -129,8 +129,14 @@ storySchema.pre("save", function (next) {
   if (this.articles.length > 0) {
 
     // 1. latestPublishedAt — find the most recent article date
-    const dates = this.articles.map((a) => new Date(a.publishedAt));
-    this.latestPublishedAt = new Date(Math.max(...dates));
+    const dates = this.articles
+      .map((a) => new Date(a.publishedAt))
+      .filter((d) => !isNaN(d.getTime()));
+    if (dates.length > 0) {
+      this.latestPublishedAt = new Date(Math.max(...dates));
+    } else {
+      this.latestPublishedAt = new Date();
+    }
 
     // 2. articleCount — sync with articles array length
     this.articleCount = this.articles.length;
@@ -153,8 +159,8 @@ storySchema.pre("save", function (next) {
 });
 
 // ── Indexes ─────────────────────────────────────────────────────────────────
-storySchema.index({ articleCount: -1, latestPublishedAt: -1 });
-storySchema.index({ latestPublishedAt: -1 });
+storySchema.index({ latestPublishedAt: -1, articleCount: -1 });
+storySchema.index({ createdAt: -1 });
 storySchema.index({ category: 1, latestPublishedAt: -1 });
 storySchema.index({ isActive: 1 });
 

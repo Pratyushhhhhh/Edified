@@ -28,3 +28,40 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Documentation & Readmes
+README.md
+**/README.md
+FREE_DEPLOYMENT_GUIDE.md
+HLD.md
+PROJECT_SUMMARY.txt
+
+# Vector DB & Local Storage
+rag/chroma_store/
+**/chroma_store/
+rag/knowledge_sources/
+*.sqlite3
+
+# Test & Benchmark Artifacts
+*.csv
+openrouter_test_results.csv
+scraperv2/debug/
+debug/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Checkpoints
+summarizer_checkpoint.json
+**/summarizer_checkpoint.json
+
+# Temporary & Scraped Test Media
+*.jpg
+*.jpeg
+*.png
+times-of-india_0.jpg
+
+# IDE & Editor Settings
+.vscode/
+.idea/

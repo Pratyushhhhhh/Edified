@@ -179,9 +179,11 @@ def run(dry_run: bool = False, reset: bool = False):
         title = art.get("title", "")
         category = art.get("category", "").lower()
         
-        locs = tag_title(title)
-        
-        if category and category != "world":
+        # CRITICAL FIX: World news articles must NEVER be tagged with Indian regional locations
+        if category == "world":
+            locs = []
+        else:
+            locs = tag_title(title)
             locs.append("All India")
             locs = sorted(set(locs))
             
@@ -214,9 +216,11 @@ def run(dry_run: bool = False, reset: bool = False):
         title = cluster.get("generatedHeadline", "") or cluster.get("headline", "")
         category = cluster.get("category", "").lower()
         
-        locs = tag_title(title)
-        
-        if category and category != "world":
+        # CRITICAL FIX: World news clusters must NEVER be tagged with Indian regional locations
+        if category == "world":
+            locs = []
+        else:
+            locs = tag_title(title)
             locs.append("All India")
             locs = sorted(set(locs))
             

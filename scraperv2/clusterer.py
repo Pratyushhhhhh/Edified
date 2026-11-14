@@ -2,6 +2,7 @@ import hashlib
 import json
 import re
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 import numpy as np
 from pymongo import MongoClient, UpdateOne
 from sentence_transformers import SentenceTransformer
@@ -23,6 +24,27 @@ def is_valid_image(url: str) -> bool:
     if not url or not isinstance(url, str) or not url.startswith("http"):
         return False
     return not any(bad in url for bad in BAD_IMAGE_DOMAINS)
+
+
+def parse_article_date(date_val) -> datetime:
+    """Parse various RSS/ISO date representations into a timezone-aware datetime."""
+    if isinstance(date_val, datetime):
+        return date_val if date_val.tzinfo else date_val.replace(tzinfo=timezone.utc)
+    if not date_val or not isinstance(date_val, str):
+        return datetime.min.replace(tzinfo=timezone.utc)
+    try:
+        dt = parsedate_to_datetime(date_val)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        try:
+            dt = datetime.fromisoformat(date_val.replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except Exception:
+            return datetime.min.replace(tzinfo=timezone.utc)
 
 
 def pick_best_image(articles: list) -> str:
@@ -191,9 +213,12 @@ def run():
                 deduped.append(a)
         articles = deduped
 
-        # Sort by date (newest first)
-        articles.sort(key=lambda x: x.get("publishedAt", ""), reverse=True)
+        # Sort by date (newest first) using parsed datetimes
+        articles.sort(key=lambda x: parse_article_date(x.get("publishedAt")), reverse=True)
         lead = articles[0]
+        lead_dt = parse_article_date(lead.get("publishedAt"))
+        if lead_dt == datetime.min.replace(tzinfo=timezone.utc):
+            lead_dt = datetime.now(timezone.utc)
 
         best_image = pick_best_image(articles)
         if best_image:
@@ -213,7 +238,7 @@ def run():
             "coverSource":      extract_source_name(lead),
             "biasDistribution": generate_bias_distribution(articles),
             "isActive":         True,
-            "latestPublishedAt": lead.get("publishedAt", ""),
+            "latestPublishedAt": lead_dt,
             "createdAt":        datetime.now(timezone.utc),
             "updatedAt":        datetime.now(timezone.utc),
         }
@@ -230,6 +255,10 @@ def run():
         if not img:
             img = get_placeholder_image(extract_source_name(article))
 
+        outlier_dt = parse_article_date(article.get("publishedAt"))
+        if outlier_dt == datetime.min.replace(tzinfo=timezone.utc):
+            outlier_dt = datetime.now(timezone.utc)
+
         cluster_doc = {
             "headline":         article.get("title", ""),
             "summary":          [],
@@ -241,7 +270,7 @@ def run():
             "coverSource":      extract_source_name(article),
             "biasDistribution": generate_bias_distribution([article]),
             "isActive":         True,
-            "latestPublishedAt": article.get("publishedAt", ""),
+            "latestPublishedAt": outlier_dt,
             "createdAt":        datetime.now(timezone.utc),
             "updatedAt":        datetime.now(timezone.utc),
         }

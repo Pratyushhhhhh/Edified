@@ -1,1 +1,2 @@
-# rag/ — Retrieval-Augmented Generation engine for The Edified
+# rag/__init__.py
+# Makes rag/ a proper Python package so `python -m rag.ingest` works.

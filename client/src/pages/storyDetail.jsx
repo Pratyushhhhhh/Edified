@@ -3,21 +3,20 @@ import useContrast from "../hooks/useContrast";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import ArticleItem from "../components/story/articleItem";
+import StoryChat from "../components/rag/StoryChat";
 
 const isRealImage = (url) => url && !url.includes("lh3.googleusercontent.com");
 
-/** Strip LLM formatting artifacts from a summary point string. */
+/** Strip LLM formatting artifacts from a summary point string while preserving article citations. */
 function cleanPoint(raw) {
   if (!raw) return "";
   let text = raw;
   // Remove leading "HEADLINE: " prefix
   text = text.replace(/^HEADLINE:\s*/i, "");
   // Remove leading "POINT N — Some label:\n?" prefix
-  text = text.replace(/^POINT\s+\d+\s*[—\-–]\s*[^:\n]+:\s*\n?/i, "");
-  // Remove trailing "(Articles: 1, 2, 3)" citation
-  text = text.replace(/\s*\(Articles?:[\s\d,]+\)\s*$/i, "");
-  // Remove orphaned leftover labels like "POINT 1 — Main event:" mid-text
-  text = text.replace(/POINT\s+\d+\s*[—\-–]\s*[^:\n]+:\s*/gi, "");
+  text = text.replace(/^POINT\s+\d+\s*[—\-–:]\s*[^:\n]*:\s*\n?/i, "");
+  // Remove orphaned leftover labels like "POINT 1 — ..." mid-text
+  text = text.replace(/POINT\s+\d+\s*[—\-–:]\s*[^:\n]*:\s*/gi, "");
   return text.trim();
 }
 
@@ -67,7 +66,11 @@ export default function StoryDetail() {
 
   if (!story) return null;
 
-  const POINT_LABELS = ["Main Event", "Context", "Key Facts"];
+  const POINT_LABELS = [
+    "Mainstream Narrative",
+    "Alternative Perspectives & Diverging Narratives",
+    "Verified Hard Facts",
+  ];
 
   const summaryPoints = story.summary?.length > 0
     ? story.summary.map(cleanPoint).filter(Boolean)
@@ -81,7 +84,7 @@ export default function StoryDetail() {
     <div style={{ minHeight: "100vh" }}>
       <Navbar />
 
-      <main style={{ maxWidth: 900, margin: "0 auto", padding: "52px 24px 80px", animation: "fadeUp 0.4s ease both" }}>
+      <main style={{ maxWidth: 1440, margin: "0 auto", padding: "48px 40px 80px", animation: "fadeUp 0.4s ease both" }}>
 
         {/* ── Back button ── */}
         <button
@@ -106,7 +109,7 @@ export default function StoryDetail() {
           onMouseEnter={e => e.currentTarget.style.color = "var(--c-on-surface)"}
           onMouseLeave={e => e.currentTarget.style.color = "var(--c-outline)"}
         >
-          All Stories
+          &larr; All Stories
         </button>
 
         {/* ── Meta bar ── */}
@@ -139,12 +142,13 @@ export default function StoryDetail() {
         {/* ── Headline ── */}
         <h1 style={{
           fontFamily: "'Newsreader', serif",
-          fontSize: "clamp(30px, 5vw, 54px)",
+          fontSize: "clamp(32px, 4.8vw, 56px)",
           fontWeight: 700,
-          lineHeight: 1.07,
+          lineHeight: 1.08,
           letterSpacing: "-0.025em",
           color: "var(--c-on-surface)",
-          marginBottom: 40,
+          maxWidth: 1200,
+          marginBottom: 44,
         }}>
           {story.headline}
         </h1>
@@ -152,22 +156,30 @@ export default function StoryDetail() {
         {/* ── Hero image + summary ── */}
         <div style={{
           display: "grid",
-          gridTemplateColumns: heroImage ? "1fr 1fr" : "1fr",
-          gap: 36,
-          marginBottom: 52,
+          gridTemplateColumns: heroImage ? "minmax(320px, 460px) 1fr" : "1fr",
+          gap: 48,
+          alignItems: "start",
+          marginBottom: 56,
         }}>
           {heroImage && (
-            <div style={{ overflow: "hidden" }}>
+            <div style={{
+              overflow: "hidden",
+              border: "1px solid var(--c-outline-variant)",
+              borderRadius: 2,
+              background: "var(--c-surface-low)",
+            }}>
               <img
                 src={heroImage}
                 alt={story.headline}
                 style={{
                   width: "100%",
-                  aspectRatio: "4/3",
+                  maxHeight: 460,
+                  aspectRatio: "16/11",
                   objectFit: "cover",
+                  display: "block",
                   transition: "filter 0.5s",
                 }}
-                />
+              />
             </div>
           )}
 
@@ -187,7 +199,7 @@ export default function StoryDetail() {
               <div
                 key={i}
                 style={{
-                  padding: "16px 0",
+                  padding: "18px 0",
                   borderBottom: "1px solid var(--c-outline-variant)",
                   borderTop: i === 0 ? "1px solid var(--c-outline-variant)" : "none",
                   animation: `fadeUp 0.4s ease ${0.1 + i * 0.07}s both`,
@@ -195,21 +207,21 @@ export default function StoryDetail() {
               >
                 <p style={{
                   fontFamily: "'Public Sans', sans-serif",
-                  fontSize: 9,
+                  fontSize: 10,
                   fontWeight: 700,
                   letterSpacing: "0.16em",
                   textTransform: "uppercase",
                   color: "var(--c-secondary)",
-                  marginBottom: 6,
-                  opacity: 0.7,
+                  marginBottom: 8,
+                  opacity: 0.85,
                 }}>
                   {POINT_LABELS[i] ?? `Point ${i + 1}`}
                 </p>
                 <p style={{
                   fontFamily: "'Public Sans', sans-serif",
-                  fontSize: 13.5,
+                  fontSize: 14.5,
                   color: "var(--c-on-surface-variant)",
-                  lineHeight: 1.72,
+                  lineHeight: 1.75,
                   margin: 0,
                 }}>
                   {point}
@@ -250,6 +262,9 @@ export default function StoryDetail() {
         </div>
 
       </main>
+
+      {/* Story-specific RAG chatbot drawer — visible ONLY on story cluster page */}
+      <StoryChat story={story} />
 
       <Footer />
     </div>

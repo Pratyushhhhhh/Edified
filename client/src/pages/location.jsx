@@ -30,9 +30,14 @@ export default function Location() {
 
   const { stories, loading, loadingMore, error, hasMore, loadMore } = useStories("all", null, activeLocation);
 
-  const hero = stories[0] || null;
-  const secondary = stories.slice(1, 4);
-  const rest = stories.slice(4);
+  // The locations page should never show world news
+  const filteredStories = stories.filter(
+    (s) => s.category?.toLowerCase() !== "world"
+  );
+
+  const hero = filteredStories[0] || null;
+  const secondary = filteredStories.slice(1, 4);
+  const rest = filteredStories.slice(4);
 
   const activeLabel = LOCATIONS.find(l => l.val === activeLocation)?.label || "All India";
 
@@ -127,10 +132,10 @@ export default function Location() {
               <p style={{ color: "var(--c-outline)", fontSize: 12 }}>Make sure your backend is running on localhost:5000</p>
             </div>
           )}
-          {!loading && !error && stories.length === 0 && (
+          {!loading && !error && filteredStories.length === 0 && (
             <div style={{ textAlign: "center", padding: "80px 0" }}>
               <p style={{ color: "var(--c-outline)", fontFamily: "'Newsreader', serif", fontSize: 22, fontStyle: "italic", marginBottom: 12 }}>
-                No stories tagged for {activeLabel} yet.
+                No regional stories tagged for {activeLabel} yet.
               </p>
               <p style={{ color: "var(--c-on-surface-variant)", fontSize: 13, fontFamily: "'Public Sans', sans-serif" }}>
                 Run <code>python scraperv2/location_tagger.py</code> to tag your clusters.
@@ -138,7 +143,7 @@ export default function Location() {
             </div>
           )}
 
-          {!loading && !error && stories.length > 0 && (
+          {!loading && !error && filteredStories.length > 0 && (
             <>
               {/* ── Hero ── */}
               {hero && (

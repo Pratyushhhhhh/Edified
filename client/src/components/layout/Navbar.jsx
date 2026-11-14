@@ -1,9 +1,11 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const PRIMARY_LINKS = [
+  { label: "About Us", to: "/about" },
   { label: "Home", to: "/" },
   { label: "Location", to: "/location" },
   { label: "Blindspots", to: "/blindspots" },
+  { label: "Ask AI", to: "/chat" },
 ];
 
 const HOME_CATEGORIES = [
@@ -85,12 +87,6 @@ export default function Navbar({
                 {label}
               </Link>
             ))}
-            <a
-              href="#site-footer"
-              className="primary-nav-link"
-            >
-              About Us
-            </a>
           </div>
         </div>
       </nav>
