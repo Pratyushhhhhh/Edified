@@ -12,12 +12,12 @@ const {
 /*
   Base path: /api/stories  (mounted in server.js)
 
-  GET    /api/stories                  home page story card feed
-  GET    /api/stories/:id              single story detail
-  POST   /api/stories                  create a story (pipeline use)
-  POST   /api/stories/:id/articles     add articles to a story
-  PATCH  /api/stories/:id              update story fields
-  DELETE /api/stories/:id              soft-delete a story
+  GET    /api/stories                  → home page story card feed
+  GET    /api/stories/:id              → single story detail
+  POST   /api/stories                  → create a story (pipeline use)
+  POST   /api/stories/:id/articles     → add articles to a story
+  PATCH  /api/stories/:id              → update story fields
+  DELETE /api/stories/:id              → soft-delete a story
 */
 
 router.get("/", getStories);

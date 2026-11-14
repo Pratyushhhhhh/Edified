@@ -14,86 +14,156 @@ const storySchema = new mongoose.Schema(
     summary: {
       type: [String],
       default: [],
+      // ARRAY of strings, not a single string.
+      //
+      // The contrast page renders these as 3 numbered bullet points
+      // in the left column next to the hero image:
+      //   1. summary[0]
+      //   2. summary[1]
+      //   3. summary[2]
+      //
+      // The frontend just does: summary.map((point, i) => <li>{point}</li>)
+      // No parsing needed — each element is already one standalone point.
+      //
+      // Later: ML pipeline asks an LLM to compress all article text
+      // into exactly 3 key points and writes them here.
     },
 
     imageUrl: {
       type: String,
       default: "",
+      // Hero image for the contrast page — the large photo shown top-left.
+      // Sourced from the cover article's image (coverSource outlet).
+      // For now: manually seeded. Later: extracted from RSS feed <enclosure> tags.
     },
 
     category: {
       type: String,
       default: "other",
+      // Shown as the category pill (e.g. "INVESTIGATION", "BUSINESS")
+      // on the contrast page meta bar.
+      // No enum — clusters data uses values like "General" that may not
+      // match a fixed whitelist.
     },
 
     tags: {
       type: [String],
       default: [],
+      // e.g. ["Gaza", "ceasefire", "Middle East"]
+      // Used for the section label on contrast page: "GLOBAL MARKETS | 12 MIN READ"
+      // and later for related stories / search filtering.
     },
 
-    //Articles 
+    // ── Articles — the core of the contrast page ───────────────────────────
     articles: {
       type: [articleSchema],
       default: [],
+      // Each article in this array becomes one row in the contrast page
+      // article list. The contrast page shows:
+      //   - article.title      → clickable headline
+      //   - article.source     → outlet name in small caps
+      //   - article.snippet    → short description below headline
+      //   - article.url        → "VISIT" button href
+      //   - article.biasLabel  → coloured pill (left / center / right)
+      //   - article.author     → byline (new field)
+      //   - article.publishedAt→ timestamp
     },
 
     coverSource: {
       type: String,
       default: "",
+      // Which outlet's article is featured prominently at the top.
+      // On the contrast page this determines which article's image
+      // and snippet appear in the hero section.
+      // e.g. "Reuters"
     },
 
+    // ── Bias distribution — the spectrum bar on the contrast page ──────────
     biasDistribution: {
-      left:        { type: Number, default: 0 },
-      centerLeft:  { type: Number, default: 0 },
-      center:      { type: Number, default: 0 },
+      left: { type: Number, default: 0 },
+      centerLeft: { type: Number, default: 0 },
+      center: { type: Number, default: 0 },
       centerRight: { type: Number, default: 0 },
-      right:       { type: Number, default: 0 },
+      right: { type: Number, default: 0 },
+      // These counts are recomputed automatically in the pre-save hook
+      // whenever articles are added or updated.
+      //
+      // The contrast page will eventually render these as a visual
+      // spectrum bar showing how many outlets lean each way — giving
+      // users an at-a-glance sense of perspectival diversity.
+      //
+      // e.g. { left: 1, centerLeft: 2, center: 1, centerRight: 1, right: 0 }
+      // → mostly center-left coverage on this story
     },
 
     latestPublishedAt: {
       type: mongoose.Schema.Types.Mixed,
       default: Date.now,
+      // Auto-updated in pre-save hook to match the most recent article.
+      // Used to sort stories newest-first on the cluster/home page.
+      // Not shown on the contrast page directly.
+      // Type is Mixed because clusters data stores RFC 2822 strings
+      // instead of Date objects.
     },
 
     isActive: {
       type: Boolean,
       default: true,
     },
+
+    articleCount: {
+      type: Number,
+      default: 0,
+    },
   },
   {
-    timestamps: true,      
+    timestamps: true,       // adds createdAt, updatedAt
     toJSON: { virtuals: true },
   }
 );
 
-//Virtual field
-storySchema.virtual("articleCount").get(function () {
-  return this.articles.length;
-});
+// Virtual field removed as it is now a stored field
 
-// Pre-save hook
+// ── Pre-save hook: keep derived fields in sync ──────────────────────────────
 storySchema.pre("save", function (next) {
   if (this.articles.length > 0) {
 
-    const dates = this.articles.map((a) => new Date(a.publishedAt));
-    this.latestPublishedAt = new Date(Math.max(...dates));
+    // 1. latestPublishedAt — find the most recent article date
+    const dates = this.articles
+      .map((a) => new Date(a.publishedAt))
+      .filter((d) => !isNaN(d.getTime()));
+    if (dates.length > 0) {
+      this.latestPublishedAt = new Date(Math.max(...dates));
+    } else {
+      this.latestPublishedAt = new Date();
+    }
 
+    // 2. articleCount — sync with articles array length
+    this.articleCount = this.articles.length;
+
+    // 2. biasDistribution — count articles by label
+    //    This runs every time a story is saved, so the distribution
+    //    always reflects the current articles array.
+    //    The contrast page reads this to show perspectival spread.
     const dist = { left: 0, centerLeft: 0, center: 0, centerRight: 0, right: 0 };
     this.articles.forEach((a) => {
-      if      (a.biasLabel === "left")         dist.left++;
-      else if (a.biasLabel === "center-left")  dist.centerLeft++;
-      else if (a.biasLabel === "center")       dist.center++;
+      if (a.biasLabel === "left") dist.left++;
+      else if (a.biasLabel === "center-left") dist.centerLeft++;
+      else if (a.biasLabel === "center") dist.center++;
       else if (a.biasLabel === "center-right") dist.centerRight++;
-      else if (a.biasLabel === "right")        dist.right++;
+      else if (a.biasLabel === "right") dist.right++;
     });
     this.biasDistribution = dist;
   }
   next();
 });
 
-// Indexes 
-storySchema.index({ latestPublishedAt: -1 });
+// ── Indexes ─────────────────────────────────────────────────────────────────
+storySchema.index({ latestPublishedAt: -1, articleCount: -1 });
+storySchema.index({ createdAt: -1 });
 storySchema.index({ category: 1, latestPublishedAt: -1 });
 storySchema.index({ isActive: 1 });
 
-module.exports = mongoose.model("Story", storySchema, "clusters");
+// Third argument forces Mongoose to use the "cluster_test_v2" collection
+// instead of auto-pluralizing "Story" → "stories".
+module.exports = mongoose.model("Story", storySchema, "cluster_test_v2");

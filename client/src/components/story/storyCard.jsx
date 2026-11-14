@@ -8,10 +8,18 @@ function getDisplayImage(story) {
   return story.articles?.find(a => isRealImage(a.imageUrl))?.imageUrl || null;
 }
 
-// variant = "default" 
-// "hero" | "secondary"
-// "compact" 
-// "location"
+function cleanSummaryExcerpt(text) {
+  if (!text) return "";
+  return text
+    .replace(/^HEADLINE:\s*/i, "")
+    .replace(/^POINT\s+\d+\s*[—\-–:]\s*[^:\n]*:\s*\n?/i, "")
+    .replace(/POINT\s+\d+\s*[—\-–:]\s*[^:\n]*:\s*/gi, "")
+    .trim();
+}
+
+// ─────────────────────────────────────────────────────────────
+// variant = "default" | "hero" | "secondary" | "compact" | "location"
+// ─────────────────────────────────────────────────────────────
 export default function StoryCard({ story, variant = "default" }) {
   const navigate = useNavigate();
   const displayImage = getDisplayImage(story);
@@ -26,7 +34,7 @@ export default function StoryCard({ story, variant = "default" }) {
   return <DefaultCard story={story} displayImage={displayImage} onClick={handleClick} />;
 }
 
-//Hero 
+// ── Hero (main featured story) ────────────────────────────────
 function HeroCard({ story, displayImage, onClick }) {
   return (
     <article
@@ -61,7 +69,7 @@ function HeroCard({ story, displayImage, onClick }) {
       </h2>
       {story.summary?.[0] && (
         <p style={{ fontSize: 16, lineHeight: 1.65, color: "var(--c-on-surface-variant)", fontFamily: "'Public Sans', sans-serif", maxWidth: 680 }}>
-          {story.summary[0]}
+          {cleanSummaryExcerpt(story.summary[0])}
         </p>
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
@@ -74,7 +82,7 @@ function HeroCard({ story, displayImage, onClick }) {
   );
 }
 
-// Secondary  
+// ── Secondary (medium 4:3 card) ───────────────────────────────
 function SecondaryCard({ story, displayImage, onClick }) {
   return (
     <article
@@ -113,14 +121,14 @@ function SecondaryCard({ story, displayImage, onClick }) {
         {story.headline}
       </h3>
       <p style={{ fontSize: 13, color: "var(--c-on-surface-variant)", lineHeight: 1.6, fontFamily: "'Public Sans', sans-serif" }}>
-        {story.summary?.[0]?.slice(0, 120) || ""}
-        {(story.summary?.[0]?.length > 120) ? "..." : ""}
+        {cleanSummaryExcerpt(story.summary?.[0])?.slice(0, 120) || ""}
+        {(cleanSummaryExcerpt(story.summary?.[0])?.length > 120) ? "..." : ""}
       </p>
     </article>
   );
 }
 
-// Compact 
+// ── Compact (text-only, sidebar) ──────────────────────────────
 function CompactCard({ story, onClick }) {
   return (
     <div
@@ -171,7 +179,7 @@ function CompactCard({ story, onClick }) {
   );
 }
 
-// Location card 
+// ── Location card (image + info, columnar) ────────────────────
 function LocationCard({ story, displayImage, onClick }) {
   return (
     <article
@@ -224,7 +232,7 @@ function LocationCard({ story, displayImage, onClick }) {
         </div>
       )}
       <p style={{ fontSize: 13, color: "var(--c-on-surface-variant)", lineHeight: 1.6, marginBottom: 14, fontFamily: "'Public Sans', sans-serif" }}>
-        {story.summary?.[0]?.slice(0, 100) || ""}...
+        {cleanSummaryExcerpt(story.summary?.[0])?.slice(0, 100) || ""}...
       </p>
       <div style={{
         borderTop: "1px solid var(--c-outline-variant)",
@@ -242,7 +250,7 @@ function LocationCard({ story, displayImage, onClick }) {
   );
 }
 
-// Default
+// ── Default (standard grid card) ─────────────────────────────
 function DefaultCard({ story, displayImage, onClick }) {
   return (
     <article

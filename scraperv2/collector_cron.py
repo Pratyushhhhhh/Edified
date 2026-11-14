@@ -1,3 +1,9 @@
+"""
+scraperv2/collector_cron.py
+───────────────────────────
+Standalone scheduler that exclusively runs the Collector stage
+every 30 minutes to aggressively fetch breaking news.
+"""
 
 import sys
 import time

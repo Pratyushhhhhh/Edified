@@ -1,12 +1,15 @@
+// 404 — route not found (place before errorHandler in server.js)
 const notFound = (req, res, next) => {
   const err = new Error(`Route not found: ${req.originalUrl}`);
   err.status = 404;
   next(err);
 };
 
+// Global error handler — catches anything passed to next(err)
 const errorHandler = (err, req, res, next) => {
   const statusCode = err.status || 500;
 
+  // Mongoose validation error — give a readable message
   if (err.name === "ValidationError") {
     const messages = Object.values(err.errors).map((e) => e.message);
     return res.status(400).json({
@@ -16,6 +19,7 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
+  // Mongoose bad ObjectId (e.g. /api/stories/not-an-id)
   if (err.name === "CastError") {
     return res.status(400).json({
       success: false,

@@ -5,14 +5,14 @@ import StoryCard from "../components/story/storyCard";
 import useStories from "../hooks/useStories";
 
 const SIDEBAR_CATS = [
-  { label: "General", val: "general", icon: "newspaper" },
-  { label: "World", val: "world", icon: "public" },
-  { label: "Politics", val: "politics", icon: "gavel" },
-  { label: "Business", val: "business", icon: "payments" },
-  { label: "Culture", val: "culture", icon: "theater_comedy" },
-  { label: "Science", val: "science", icon: "science" },
-  { label: "Health", val: "health", icon: "health_and_safety" },
-  { label: "Technology", val: "technology", icon: "devices" },
+  { label: "General",    val: "general",    icon: "newspaper" },
+  { label: "World",      val: "world",       icon: "public" },
+  { label: "Politics",   val: "politics",    icon: "gavel" },
+  { label: "Business",   val: "business",    icon: "payments" },
+  { label: "Science",    val: "science",     icon: "science" },
+  { label: "Health",     val: "health",      icon: "health_and_safety" },
+  { label: "Technology", val: "technology",  icon: "devices" },
+  { label: "Sports",     val: "sports",      icon: "sports_cricket" },
 ];
 
 const ORWELL_QUOTE = '\u201cTrue journalism is printing what someone else does not want printed; everything else is public relations.\u201d';
@@ -34,7 +34,7 @@ export default function Home() {
         onCategoryChange={setCategory}
       />
 
-      {/* Full-width intro hero */}
+      {/* ── Full-width intro hero (spans full viewport) ── */}
       <header style={{
         maxWidth: 1536,
         margin: "0 auto",
@@ -44,7 +44,7 @@ export default function Home() {
         gap: 0,
         borderBottom: "1px solid var(--c-outline-variant)",
       }}>
-        {/* Left: text */}
+        {/* Left: text — no maxWidth constraint, fills all remaining space */}
         <div style={{ flex: 1, paddingRight: 40 }}>
           <span style={{
             display: "block",
@@ -91,7 +91,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Sidebar + Main (below the intro) */}
+      {/* ── Sidebar + Main (below the intro) ── */}
       <div style={{ display: "flex", maxWidth: 1536, margin: "0 auto" }}>
         {/* ── Desktop sidebar ── */}
         <aside className="sidebar" style={{ display: "flex", flexDirection: "column" }}>
@@ -139,10 +139,10 @@ export default function Home() {
           </nav>
         </aside>
 
-        {/* Main canvas */}
+        {/* ── Main canvas ── */}
         <main style={{ flex: 1, minWidth: 0, padding: "32px 32px 24px" }}>
 
-          {/* States: loading / error / empty ── */}
+          {/* ── States: loading / error / empty ── */}
           {loading && (
             <div style={{ textAlign: "center", padding: "80px 0", color: "var(--c-outline)", fontFamily: "'Newsreader', serif", fontSize: 20, fontStyle: "italic" }}>
               Loading stories...
@@ -158,7 +158,7 @@ export default function Home() {
             <p style={{ textAlign: "center", color: "var(--c-outline)", padding: "80px 0" }}>No stories found.</p>
           )}
 
-          {/* Editorial grid */}
+          {/* ── Editorial grid ── */}
           {!loading && !error && stories.length > 0 && (
             <section style={{
               display: "grid",
@@ -285,7 +285,7 @@ export default function Home() {
             </section>
           )}
 
-          {/* More stories grid */}
+          {/* ── More stories grid ── */}
           {!loading && !error && gridStories.length > 0 && (
             <section style={{ marginTop: 64 }}>
               <div style={{
@@ -319,7 +319,7 @@ export default function Home() {
             </section>
           )}
 
-          {/* Load More */}
+          {/* ── Load More ── */}
           {!loading && !error && hasMore && (
             <div style={{ textAlign: "center", padding: "52px 0 20px" }}>
               <button
@@ -332,7 +332,7 @@ export default function Home() {
             </div>
           )}
 
-          {/* End indicator */}
+          {/* ── End indicator ── */}
           {!loading && !error && !hasMore && stories.length > 6 && (
             <div style={{
               textAlign: "center", padding: "44px 0 20px",

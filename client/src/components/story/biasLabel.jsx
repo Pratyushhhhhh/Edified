@@ -1,3 +1,4 @@
+// Bias pill matching Stitch design palette
 const PALETTE = {
   "left":         { bg: "#dbeafe", color: "#1e3a8a" },
   "center-left":  { bg: "#dcfce7", color: "#14532d" },

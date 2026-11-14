@@ -4,6 +4,7 @@ const cors = require("cors");
 const connectDB = require("./config/db");
 const storiesRouter = require("./routes/stories");
 const contrastRouter = require("./routes/contrast");
+const ragRouter = require("./routes/rag");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -27,6 +28,12 @@ app.use("/api/stories", storiesRouter);
 // Contrast page detail view
 // GET /api/contrast/:storyId → full story shaped for contrast page
 app.use("/api/contrast", contrastRouter);
+
+// RAG chatbot — proxies to Python FastAPI on port 8000
+// POST /api/rag/ask    → chatbot question answering
+// GET  /api/rag/health → RAG server health check
+// POST /api/rag/ingest → trigger re-ingestion
+app.use("/api/rag", ragRouter);
 
 // ── Error handling (must be last) ─────────────────────────────────────────────
 app.use(notFound);

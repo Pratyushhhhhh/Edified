@@ -2,16 +2,94 @@ const Story = require("../models/story");
 
 const getStories = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, category } = req.query;
+    const { page = 1, limit = 10, category, maxArticles, location, sort } = req.query;
 
-    const filter = { isActive: true };
+    const filter = { isActive: { $ne: false } };
     if (category && category !== "all") filter.category = new RegExp(`^${category}$`, "i");
+    if (maxArticles) {
+      filter["articles"] = { $exists: true };
+      filter.$expr = { $lte: [{ $size: "$articles" }, Number(maxArticles)] };
+    }
+    if (location && location !== "all") {
+      if (location.toLowerCase() === "all india") {
+        filter.$or = [
+          { locations: new RegExp("All India", "i") },
+          { locations: { $in: ["Delhi", "Uttar Pradesh", "Uttarakhand", "Manipur", "Maharashtra", "West Bengal", "Kerala", "Punjab"] } },
+        ];
+      } else {
+        filter.locations = new RegExp(location, "i");
+      }
 
-    const stories = await Story.find(filter)
-      .sort({ latestPublishedAt: -1 })
-      .skip((page - 1) * Number(limit))
-      .limit(Number(limit))
-      .select("-articles.biasScore -__v");
+      // CRITICAL FIX: The locations page should NEVER return world news
+      if (filter.category) {
+        if (category.toLowerCase() === "world") {
+          filter.category = { $in: [] }; // Explicitly block if world is queried under domestic location
+        }
+      } else {
+        filter.category = { $not: /^world$/i };
+      }
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const take = Number(limit);
+    let stories;
+
+    // Explicit sort overrides if requested
+    if (sort === "top" || sort === "popular" || sort === "coverage") {
+      stories = await Story.find(filter)
+        .sort({ articleCount: -1, latestPublishedAt: -1 })
+        .skip(skip)
+        .limit(take)
+        .select("-articles.biasScore -__v");
+    } else if (sort === "recent") {
+      stories = await Story.find(filter)
+        .sort({ latestPublishedAt: -1, createdAt: -1, articleCount: -1 })
+        .skip(skip)
+        .limit(take)
+        .select("-articles.biasScore -__v");
+    } else {
+      // DEFAULT: Balanced ranking combining BOTH Article Count AND Recency.
+      // High-coverage stories get prominent placement, while breaking recent news stays on top.
+      try {
+        stories = await Story.aggregate([
+          { $match: filter },
+          {
+            $addFields: {
+              parsedDate: {
+                $convert: {
+                  input: "$latestPublishedAt",
+                  to: "date",
+                  onError: { $ifNull: ["$createdAt", new Date()] },
+                  onNull: { $ifNull: ["$createdAt", new Date()] },
+                },
+              },
+            },
+          },
+          {
+            $addFields: {
+              // 6 hours (21,600,000 ms) boost per article in the cluster
+              newsScore: {
+                $add: [
+                  { $toLong: "$parsedDate" },
+                  { $multiply: [{ $ifNull: ["$articleCount", 1] }, 21600000] },
+                ],
+              },
+            },
+          },
+          { $sort: { newsScore: -1 } },
+          { $skip: skip },
+          { $limit: take },
+          { $project: { "articles.biasScore": 0, __v: 0 } },
+        ]);
+      } catch (aggErr) {
+        // Fallback to compound sort if aggregation is not supported
+        stories = await Story.find(filter)
+          .sort({ latestPublishedAt: -1, articleCount: -1 })
+          .skip(skip)
+          .limit(take)
+          .select("-articles.biasScore -__v");
+      }
+    }
 
     const total = await Story.countDocuments(filter);
 
