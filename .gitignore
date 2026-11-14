@@ -15,6 +15,7 @@ scraper/collector.py
 scraper/cluster_rebuild.py
 
 GUIDE/
+hidden/
 
 # Sensitive Config
 scraperv2/config.py
